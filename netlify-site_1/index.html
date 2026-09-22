@@ -87,6 +87,17 @@ main{max-width:1240px;margin:0 auto;padding:16px 20px 56px}
   border-radius:999px;padding:2px 8px;white-space:nowrap}
 .note.pending{opacity:.8;box-shadow:none;outline:2px dashed var(--rule-strong);outline-offset:-3px}
 .status.wait{color:var(--pen-amber);font-weight:700}
+/* 전담 배치 */
+.tt.spec td .homeroom{color:var(--rule-strong);font-size:.85rem;font-family:var(--ui)}
+.tt.week td{vertical-align:top;padding:7px 4px}
+.tt.week .sj{display:inline-block;margin:1px 2px;font-size:.92rem}
+.tt.week th.td-today,.tt.week td.td-today{background:rgba(255,223,80,.16)}
+.chip.off{opacity:.45}
+.daynotes{margin-top:10px;display:flex;flex-direction:column;gap:3px}
+.note-line{font-family:var(--hand);font-size:1.02rem;color:var(--pen-blue)}
+.note-line::before{content:"✎ ";opacity:.7}
+.freerow{margin-top:10px;font-family:var(--hand);font-size:1.06rem;color:var(--pen-green);
+  background:var(--hl-mint);display:inline-block;padding:3px 12px;border-radius:999px}
 .title{font-family:var(--pen);font-weight:400;font-size:1.7rem;margin:0 0 10px;line-height:1.2;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .title .more{margin-left:auto;font-family:var(--ui);font-size:.74rem;color:var(--ink-soft)}
 .title b{font-weight:400}
@@ -401,7 +412,7 @@ function refresh(){
 }
 
 /* ───── 책갈피 ───── */
-var PAGES=[['today','오늘'],['check','수합'],['time','시간표'],['week','주간계획'],['eval','평가'],
+var PAGES=[['today','오늘'],['check','수합'],['time','전담'],['week','주간계획'],['eval','평가'],
   ['stu','학생'],['memo','메모판'],['buy','준비물'],['rec','창체기록'],['data','자료']];
 function renderTabs(){
   $('tabs').innerHTML = PAGES.map(function(p){
@@ -447,7 +458,25 @@ function tickClock(){
   el.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   if ($('nowState')) $('nowState').textContent=n.label;
 }
-function classesList(){ return Object.keys((S.d.timetable&&S.d.timetable.classes)||{}).sort(); }
+function classesList(){
+  var c=(S.d.classes||[]).map(String);
+  if (c.length) return c.slice().sort();
+  return Object.keys((S.d.timetable&&S.d.timetable.classes)||{}).sort();
+}
+function clsLabel(c){ return (S.d.grade||6)+'-'+c; }
+/* 전담 배치 */
+function spec(){ return S.d.specialist || { subjects:[], periods:[], days:{} }; }
+function specDay(ds){ return (spec().days||{})[ds] || null; }
+function specPeriods(){
+  var pp=(spec().periods||[]).filter(function(p){ return /교시/.test(p.name); });
+  if (pp.length) return pp;
+  return periodsNum();
+}
+function specCount(ds){
+  var d=specDay(ds); if(!d) return 0;
+  var n=0; Object.keys(d.slots||{}).forEach(function(k){ n+=Object.keys(d.slots[k]).length; });
+  return n;
+}
 function periodsNum(){ return ((S.d.timetable&&S.d.timetable.periods)||[]).filter(function(p){ return /^\d교시/.test(p.name); }); }
 function weekRange(off){
   var n=new Date(); n.setHours(0,0,0,0);
@@ -472,10 +501,12 @@ function pToday(){
       '<div class="stat"><small>수합 항목</small><b>'+items().length+'</b></div>'+
       '<div class="stat '+(lateCount()?'warn':'')+'"><small>마감 지남·미제출</small><b>'+lateCount()+'</b></div>'+
       '<div class="stat"><small>이번 주 일정</small><b>'+evs.length+'</b></div>'+
-      '<div class="stat"><small>준비물 요청</small><b>'+((d.supplies||[]).filter(function(x){ return x.status!=='완료'; }).length)+'</b></div>'+
+      '<div class="stat"><small>오늘 전담</small><b>'+specCount(specDay(t)?t:nextSchoolDay())+'</b></div>'+
     '</div></div>';
 
-  h += '<div class="sheet"><h3 class="title"><span class="mark">오늘 시간표</span><span class="more">'+(n.weekend?'월요일':WD[n.now.getDay()]+'요일')+'</span></h3>'+ ttTable(n.weekend?'월':WD[n.now.getDay()], true) +'</div>';
+  var sd = specDay(t) ? t : nextSchoolDay();
+  h += '<div class="sheet"><h3 class="title"><span class="mark">'+(sd===t?'오늘 전담':'다음 등교일 전담')+'</span>'+
+    '<span class="more">'+md(sd)+' · 빈칸은 담임 수업</span></h3>'+ ttTable(sd, true) +'</div>';
 
   h += '<div class="grid2">';
   h += '<div class="sheet"><h3 class="title"><span class="mark">곧 마감</span><span class="more">'+soon.length+'건</span></h3>'+
@@ -507,24 +538,48 @@ function pToday(){
   wire(); tickClock();
   if ($('evAdd')) $('evAdd').onclick=addEvent;
 }
-function ttTable(day, markNow){
-  var cls=classesList();
-  if (!cls.length) return '<div class="empty">반별 시간표 탭을 읽지 못했어요.</div>';
-  var n=nowInfo(), pp=periodsNum(), max=0;
-  cls.forEach(function(c){ max=Math.max(max,(S.d.timetable.classes[c][day]||[]).length); });
-  var h='<table class="tt"><thead><tr><th class="pcol">'+day+'요일</th>'+cls.map(function(c){ return '<th>'+esc(c)+'</th>'; }).join('')+'</tr></thead><tbody>';
-  for (var i=0;i<max;i++){
-    var p=pp[i];
-    var isNow = markNow && !n.weekend && n.cur && n.cur.name === (i+1)+'교시';
-    h+='<tr class="'+(isNow?'nowrow':'')+'"><td class="pcol"><b>'+(i+1)+'교시</b>'+(p?'<br>'+hm(p.s)+'–'+hm(p.e):'')+'</td>';
+function ttTable(ds, markNow){
+  var cls=classesList(), pp=specPeriods(), day=specDay(ds);
+  if (!pp.length) return '<div class="empty">시간표 탭을 읽지 못했어요.</div>';
+  if (!day) return '<div class="empty">'+md(ds)+'은 전담 배치표에 없는 날이에요.</div>';
+  var n=nowInfo(), isToday = ds===today();
+  var h='<table class="tt spec"><thead><tr><th class="pcol">'+md(ds)+'</th>'+
+    cls.map(function(c){ return '<th>'+esc(clsLabel(c))+'</th>'; }).join('')+'</tr></thead><tbody>';
+  var any=false;
+  pp.forEach(function(p){
+    var row=(day.slots||{})[p.name]||{};
+    var isNow = markNow && isToday && n.cur && n.cur.name===p.name;
+    h+='<tr class="'+(isNow?'nowrow':'')+'"><td class="pcol"><b>'+esc(p.name)+'</b><br>'+hm(p.s)+'–'+hm(p.e)+'</td>';
     cls.forEach(function(c){
-      var arr=S.d.timetable.classes[c][day]||[], v=arr[i]||'';
-      var none=!arr.filter(String).length;
-      h+='<td>'+(v?'<span class="sj sj-'+esc(v.replace(/\(.*\)/,''))+'">'+esc(v)+'</span>':(none&&i===0?'<span class="empty small">미입력</span>':''))+'</td>';
+      var v=row[c]||'';
+      if (v) any=true;
+      h+='<td>'+(v?'<span class="sj sj-'+esc(String(v).replace(/\(.*\)/,''))+'">'+esc(v)+'</span>'
+                : '<span class="homeroom">담임</span>')+'</td>';
     });
     h+='</tr>';
-  }
-  return h+'</tbody></table>';
+  });
+  h+='</tbody></table>';
+  if (!any) h+='<div class="empty small">이 날은 전담 수업이 없어요.</div>';
+  if ((day.notes||[]).length) h+='<div class="daynotes">'+day.notes.map(function(t){ return '<span class="note-line">'+esc(t)+'</span>'; }).join('')+'</div>';
+  var free=allFree(ds);
+  if (free.length) h+='<div class="freerow">4개 반 모두 전담 · <b>'+free.join(', ')+'</b> — 학년 협의 가능</div>';
+  return h;
+}
+/* 네 반이 동시에 전담인 교시 */
+function allFree(ds){
+  var day=specDay(ds); if(!day) return [];
+  var cls=classesList(), out=[];
+  specPeriods().forEach(function(p){
+    var row=(day.slots||{})[p.name]||{};
+    if (cls.length && cls.every(function(c){ return row[c]; })) out.push(p.name);
+  });
+  return out;
+}
+function wdOf(ds){ var d=new Date(ds+'T00:00:00'); return WD[d.getDay()]; }
+function nextSchoolDay(){
+  var d=new Date(); d.setHours(0,0,0,0);
+  for (var i=0;i<14;i++){ var k=ymd(d); if (specDay(k)) return k; d.setDate(d.getDate()+1); }
+  return today();
 }
 function evRow(e){
   return '<div class="ev"><span class="when">'+md(e.date)+'</span><span><span class="dot"></span>'+esc(e.text)+
@@ -590,25 +645,85 @@ function itemRow(it){
 
 /* ───── 시간표 ───── */
 function pTime(){
-  var days=['월','화','수','목','금'], n=nowInfo();
-  if (!S.day) S.day = n.weekend ? '월' : WD[n.now.getDay()];
-  var h='<div class="sheet"><h3 class="title"><span class="mark">반별 시간표</span>'+
-    '<span class="more"><span class="chips">'+days.map(function(d){ return '<button type="button" class="chip '+(S.day===d?'on':'')+'" data-day="'+d+'">'+d+'</button>'; }).join('')+'</span></span></h3>'+
-    ttTable(S.day, S.day===WD[n.now.getDay()])+'</div>';
-  var cnt={};
-  classesList().forEach(function(c){ days.forEach(function(d){ (S.d.timetable.classes[c][d]||[]).forEach(function(v){ if(!v) return; var k=v.replace(/\(.*\)/,''); cnt[k]=(cnt[k]||0)+1; }); }); });
+  var n=nowInfo(), sp=spec();
+  if (!S.specDate || !specDay(S.specDate)) S.specDate = specDay(today()) ? today() : nextSchoolDay();
+  var wk=weekRangeOf(S.specDate), days=[];
+  for (var i=0;i<5;i++){ var d=new Date(wk.mon); d.setDate(wk.mon.getDate()+i); days.push(ymd(d)); }
+
+  var h='<div class="sheet"><div class="tape"></div><h3 class="title"><span class="mark">전담 배치</span>'+
+    '<span class="more">'+esc(sp.tab||'')+(sp.from?' · '+md(sp.from)+' ~ '+md(sp.to):'')+'</span></h3>'+
+    '<div class="chips">'+
+      '<button type="button" class="chip" data-spw="-1">◀ 지난주</button>'+
+      days.map(function(d){
+        var on = d===S.specDate, has = !!specDay(d);
+        return '<button type="button" class="chip '+(on?'on':'')+(has?'':' off')+'" data-spd="'+d+'">'+
+          md(d)+(d===today()?' ·오늘':'')+'</button>';
+      }).join('')+
+      '<button type="button" class="chip" data-spw="1">다음 주 ▶</button>'+
+    '</div><div style="margin-top:14px">'+ttTable(S.specDate, true)+'</div></div>';
+
+  // 이번 주 한눈에
+  h+='<div class="sheet"><h3 class="title"><span class="mark">이번 주 전담</span>'+
+    '<span class="more">'+md(days[0])+' ~ '+md(days[4])+'</span></h3>'+weekSpecTable(days)+'</div>';
+
+  // 반별 주당 전담 시수
+  var cls=classesList(), cnt={}, bySub={};
+  days.forEach(function(d){
+    var day=specDay(d); if(!day) return;
+    Object.keys(day.slots||{}).forEach(function(pn){
+      Object.keys(day.slots[pn]).forEach(function(c){
+        cnt[c]=(cnt[c]||0)+1;
+        var sj=day.slots[pn][c]; bySub[sj]=(bySub[sj]||0)+1;
+      });
+    });
+  });
   h+='<div class="grid2">';
-  h+='<div class="sheet plain"><h3 class="title"><span class="mark">주당 과목 수</span><span class="more">4개 반 합계</span></h3><div class="chips">'+
-    Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; }).map(function(k){ return '<span class="chip">'+esc(k)+' '+cnt[k]+'</span>'; }).join('')+'</div></div>';
-  var pp=(S.d.timetable.periods||[]);
+  h+='<div class="sheet plain"><h3 class="title"><span class="mark">반별 주당 전담</span></h3><div class="chips">'+
+    cls.map(function(c){ return '<span class="chip">'+esc(clsLabel(c))+' '+(cnt[c]||0)+'시간</span>'; }).join('')+'</div></div>';
+  h+='<div class="sheet plain"><h3 class="title"><span class="mark">과목별</span><span class="more">4개 반 합계</span></h3><div class="chips">'+
+    (Object.keys(bySub).length ? Object.keys(bySub).sort(function(a,b){ return bySub[b]-bySub[a]; })
+      .map(function(k){ return '<span class="chip">'+esc(k)+' '+bySub[k]+'</span>'; }).join('')
+      : '<span class="empty small">이번 주 전담이 없어요.</span>')+'</div></div>';
+  h+='</div>';
+
+  var pp=specPeriods();
   h+='<div class="sheet plain"><h3 class="title"><span class="mark">수업 시정</span></h3>'+
     (pp.length?'<table class="list"><tbody>'+pp.map(function(p){
       return '<tr'+(n.cur===p?' style="background:rgba(255,223,80,.25)"':'')+'><td>'+esc(p.name)+'</td><td class="num">'+hm(p.s)+' – '+hm(p.e)+'</td></tr>';
     }).join('')+'</tbody></table>':'<div class="empty">시정을 읽지 못했어요.</div>')+'</div>';
-  h+='</div>';
+
   $('view').innerHTML=h;
-  each($('view').querySelectorAll('.chip[data-day]'), function(b){ b.onclick=function(){ S.day=b.dataset.day; pTime(); }; });
+  each($('view').querySelectorAll('[data-spd]'), function(b){ b.onclick=function(){ S.specDate=b.dataset.spd; pTime(); }; });
+  each($('view').querySelectorAll('[data-spw]'), function(b){ b.onclick=function(){
+    var d=new Date(S.specDate+'T00:00:00'); d.setDate(d.getDate()+7*Number(b.dataset.spw));
+    S.specDate=ymd(d); pTime(); }; });
   wire();
+}
+/* 교시 × 요일 한 판 */
+function weekSpecTable(days){
+  var pp=specPeriods(), cls=classesList();
+  if (!pp.length) return '<div class="empty">시정을 읽지 못했어요.</div>';
+  var h='<table class="tt week"><thead><tr><th class="pcol">교시</th>'+
+    days.map(function(d){ var dd=new Date(d+'T00:00:00'); return '<th'+(d===today()?' class="td-today"':'')+'>'+WD[dd.getDay()]+'<br><span class="small muted">'+(dd.getMonth()+1)+'/'+dd.getDate()+'</span></th>'; }).join('')+
+    '</tr></thead><tbody>';
+  pp.forEach(function(p){
+    h+='<tr><td class="pcol"><b>'+esc(p.name)+'</b><br>'+hm(p.s)+'–'+hm(p.e)+'</td>';
+    days.forEach(function(d){
+      var day=specDay(d), row=(day&&day.slots||{})[p.name]||{};
+      var keys=Object.keys(row).sort();
+      h+='<td'+(d===today()?' class="td-today"':'')+'>'+
+        (keys.length? keys.map(function(c){ return '<span class="sj sj-'+esc(String(row[c]).replace(/\(.*\)/,''))+'">'+c+'반 '+esc(row[c])+'</span>'; }).join(' ')
+                    : (day?'':'<span class="small muted">–</span>'))+'</td>';
+    });
+    h+='</tr>';
+  });
+  return h+'</tbody></table>';
+}
+function weekRangeOf(ds){
+  var n=new Date(ds+'T00:00:00');
+  var mon=new Date(n); mon.setDate(n.getDate()-((n.getDay()+6)%7));
+  var sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  return { mon:mon, sun:sun };
 }
 
 /* ───── 주간계획 (한 장) ───── */
@@ -630,13 +745,12 @@ function pWeek(){
     var ds=ymd(day);
     var de=evs.filter(function(e){ return e.date===ds; });
     var dd=dues.filter(function(x){ return x.due===ds; });
-    var cls=classesList();
-    var subj=cls.map(function(c){ return (S.d.timetable.classes[c][dn]||[]).filter(String).length; });
+    var spn=specCount(ds), free=allFree(ds);
     return '<div class="weekcol '+(ds===t?'today':'')+'"><h4>'+(day.getMonth()+1)+'/'+day.getDate()+' ('+dn+')</h4>'+
       (de.length?'<ul>'+de.map(function(e){ return '<li>'+esc(e.text)+'</li>'; }).join('')+'</ul>':'')+
       (dd.length?'<ul style="color:var(--pen-red)">'+dd.map(function(x){ return '<li>마감: '+esc(x.name.replace(/\s*\([^)]*까지\)\s*/,''))+'</li>'; }).join('')+'</ul>':'')+
       (!de.length&&!dd.length?'<div class="empty small">—</div>':'')+
-      '<div class="small muted" style="margin-top:6px">수업 '+subj.join('·')+'교시</div></div>';
+      '<div class="small muted" style="margin-top:6px">전담 '+spn+'칸'+(free.length?' · 전 학년 전담 '+free.join(',') :'')+'</div></div>';
   }).join('')+'</div>';
   h+='<div class="chips" style="margin-top:14px">'+
     '<button type="button" class="chip blue" data-copy="week'+(S.weekOff>0?'1':'0')+'">공지 문구 복사</button>'+
@@ -965,13 +1079,27 @@ function MOCK(action,p){
   if (action==='login') return { token:'preview' };
   if (action!=='data') return { ok:true };
   var days=['월','화','수','목','금'], subs=['국어','수학','사회','과학','영어','체육','음악','미술','실과','도덕','창체'];
+  var PERIODS=[['1교시',540,580],['2교시',590,630],['3교시',640,680],['4교시',690,730],['점심',730,780],['5교시',790,830],['6교시',840,880]].map(function(x){ return {name:x[0],s:x[1],e:x[2]}; });
   function tt(seed){ var t={}; days.forEach(function(d,di){ t[d]=[]; for(var i=0;i<6;i++) t[d].push(subs[(seed+di*3+i*5)%subs.length]); }); return t; }
   function dz(o){ var x=new Date(); x.setDate(x.getDate()+o); return ymd(x); }
   return {
     title:'6학년 운영 데스크', grade:6, year:2026, needCode:false, sheetUrl:'https://docs.google.com', updated:new Date().toISOString(),
-    timetable:{ classes:{'6-1':tt(0),'6-2':tt(2),'6-3':tt(4),'6-4':tt(6)},
-      periods:[['1교시',540,580],['2교시',590,630],['3교시',640,680],['4교시',690,730],['급식 시간',730,780],['5교시',790,830],['6교시',840,880]]
-        .map(function(x){ return {name:x[0],s:x[1],e:x[2]}; }) },
+    classes:['1','2','3','4'], teachers:{'1':'김은서','2':'박교사','3':'이교사','4':'정교사'},
+    timetable:{ classes:{'6-1':tt(0),'6-2':tt(2),'6-3':tt(4),'6-4':tt(6)}, periods:PERIODS },
+    specialist:(function(){
+      var days={}, subs=['원어민','과학','체육','영어(전)'];
+      for (var o=-7;o<=7;o++){
+        var x=new Date(); x.setDate(x.getDate()+o);
+        var w=x.getDay(); if(w===0||w===6) continue;
+        var slots={}, sj=subs[(w-1)%subs.length];
+        for (var i=0;i<4;i++) slots[PERIODS[i].name]={}; 
+        for (var i=0;i<4;i++) slots[PERIODS[i].name][String(((i+w)%4)+1)]=sj;
+        if (w===3){ slots[PERIODS[2].name]={'1':'체육','2':'체육','3':'체육','4':'체육'}; }
+        days[ymd(x)]={ slots:slots, notes: w===2?['3교시 - 민방위훈련']:[] };
+      }
+      return { tab:'2학기 시간표', subjects:subs, periods:PERIODS, days:days,
+               from:ymd(new Date(Date.now()-7*864e5)), to:ymd(new Date(Date.now()+7*864e5)) };
+    })(),
     checklist:{ rows:[
       { row:18, name:'학습준비물(~3/3까지)', due:dz(-6), cls:{'1':false,'2':true,'3':true,'4':false}, link:'https://docs.google.com' },
       { row:19, name:'학급동아리 계획(~3/13까지)', due:dz(1), cls:{'1':false,'2':true,'3':true,'4':false}, link:'' },
