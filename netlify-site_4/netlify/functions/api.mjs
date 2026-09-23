@@ -23,7 +23,7 @@ function safeEq(a, b) {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 // 시트에 저장해야 하는 요청 (큐에 쌓아 두고 앱스스크립트가 가져감)
-const WRITE = new Set(['check', 'addItem', 'save', 'addEvent', 'addMemo', 'addSupply', 'setSupply', 'setEvent', 'setSpec', 'delRow', 'saveRecords']);
+const WRITE = new Set(['check', 'addItem', 'save', 'addEvent', 'addMemo', 'addSupply', 'setSupply', 'setEvent', 'setSpec', 'addGroup', 'delGroup', 'addRecord', 'delRow', 'saveRecords']);
 const QMAX = 300;
 const reply = (o) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 
@@ -185,6 +185,14 @@ async function preview(st, a, p, pending) {
     } else if (a === 'setEvent') {
       const e = (d.events || []).find((x) => x.row === Number(p.row));
       if (e) { e.important = !!p.important; e.pending = true; }
+    } else if (a === 'addGroup') {
+      if (!d.supplies) d.supplies = { head: [], rows: [], groups: [] };
+      if (!d.supplies.groups?.includes(String(p.name))) (d.supplies.groups ||= []).push(String(p.name));
+    } else if (a === 'delGroup') {
+      if (d.supplies?.groups) d.supplies.groups = d.supplies.groups.filter((g) => g !== String(p.name));
+    } else if (a === 'addRecord') {
+      (d.records ||= []).push({ row: 0, date: String(p.date || ''), event: String(p.event || ''),
+        subject: String(p.subject || '창체'), text: String(p.text || ''), pending: true });
     } else if (a === 'setSpec') {
       const day = d.specialist?.days?.[String(p.date)];
       if (day) {
