@@ -192,6 +192,16 @@ main{max-width:1240px;margin:0 auto;padding:16px 20px 56px}
 .chip:hover{background:color-mix(in srgb, var(--c) 30%, var(--paper))}
 .chip.on{background:color-mix(in srgb, var(--c) 55%, var(--paper));transform:rotate(-2deg) scale(1.05)}
 .chip.red{--c:var(--pen-red)} .chip.blue{--c:var(--pen-blue)} .chip.green{--c:var(--pen-green)} .chip.amber{--c:var(--pen-amber)}
+.chip.sm{padding:2px 9px 3px;font-size:.75rem}
+
+/* 평가 — 과목별 영역 횟수 */
+.evsum{display:grid;gap:2px}
+.evsum-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 6px;border-bottom:1px dotted var(--rule);cursor:pointer}
+.evsum-row:last-child{border-bottom:none}
+.evsum-row:hover{background:rgba(120,105,80,.06)}
+.evsum-row>b{font-family:var(--serif);font-size:0.95rem;min-width:4.2em}
+.evsum-row .cnt{font-family:var(--ui);font-size:.72rem;color:var(--ink-soft);min-width:3em}
+.evsum-row .areas{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto}
 
 /* 오늘 머리 */
 .dayhead{display:flex;align-items:flex-end;gap:14px;padding-bottom:8px;border-bottom:1.5px solid var(--ink);flex-wrap:wrap}
@@ -270,6 +280,23 @@ textarea{font-family:var(--hand);font-size:0.896rem;border:1.5px solid var(--rul
 .note .x{position:absolute;top:6px;right:8px;border:none;background:transparent;color:rgba(52,48,42,.35);font-size:1rem}
 .note .x:hover{color:var(--pen-red)}
 
+/* 공지·부장회의 — 줄 목록 */
+.addline{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.addline input{flex:1 1 240px;min-width:0;font-family:var(--hand);font-size:0.92rem;color:var(--pen-blue);
+  background:transparent;border:none;border-bottom:1.5px dashed var(--rule-strong);padding:6px 2px}
+.addline input:focus{outline:none;border-bottom-color:var(--ink);border-bottom-style:solid}
+ul.notice{list-style:none;margin:0;padding:0}
+ul.notice li{position:relative;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  padding:9px 30px 9px 16px;border-bottom:1px dotted var(--rule)}
+ul.notice li:last-child{border-bottom:none}
+ul.notice li::before{content:"●";position:absolute;left:0;top:9px;font-size:.5rem;color:var(--pen-amber)}
+ul.notice li .t{font-family:var(--hand);font-size:0.94rem;flex:1 1 60%;white-space:pre-wrap;word-break:break-word}
+ul.notice li .who{font-family:var(--ui);font-size:.72rem;color:var(--ink-soft);white-space:nowrap}
+ul.notice li.pending{opacity:.7}
+ul.notice li .x{position:absolute;top:6px;right:2px;border:none;background:transparent;
+  color:rgba(52,48,42,.3);font-size:.95rem;line-height:1}
+ul.notice li .x:hover{color:var(--pen-red)}
+
 /* 목록·표 */
 .list{width:100%;border-collapse:collapse;font-family:var(--hand);font-size:0.88rem}
 .list th{font-family:var(--ui);font-size:.72rem;letter-spacing:.06em;color:var(--ink-soft);text-align:left;padding:4px 6px;border-bottom:1.5px solid var(--ink)}
@@ -285,10 +312,28 @@ textarea{font-family:var(--hand);font-size:0.896rem;border:1.5px solid var(--rul
   background:rgba(150,200,225,.28);padding:3px 12px 4px;
   clip-path:polygon(0 10%,4% 0,96% 8%,100% 0,98% 50%,100% 100%,95% 92%,5% 100%,0 90%,2% 50%)}
 .links a:hover{background:rgba(150,200,225,.5)}
-.tablewrap{overflow:auto;max-height:64vh;border:1.5px solid var(--rule-strong);border-radius:8px;background:var(--paper)}
-table.sheetview{border-collapse:collapse;font-size:.82rem;min-width:100%;font-family:var(--ui)}
-table.sheetview td{border:1px solid var(--rule);padding:5px 8px;vertical-align:top;white-space:pre-line;max-width:340px}
+.tablewrap{overflow:auto;max-height:66vh;width:max-content;max-width:100%;
+  border:1.5px solid var(--rule-strong);border-radius:8px;
+  background:var(--paper);overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+table.sheetview{border-collapse:separate;border-spacing:0;font-size:.82rem;font-family:var(--ui)}
+table.sheetview th,table.sheetview td{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:6px 9px;vertical-align:top;text-align:left;white-space:pre-wrap;word-break:break-word;
+  min-width:4.6em;max-width:24em}
+/* 첫 줄(머리글)은 세로로 스크롤해도 붙어 있습니다 */
+table.sheetview thead th{position:sticky;top:0;z-index:3;background:var(--paper-2);font-weight:700;
+  border-bottom:1.5px solid var(--ink);white-space:nowrap}
+/* 행 번호 칸은 가로로 스크롤해도 붙어 있습니다 */
+table.sheetview .rown{position:sticky;left:0;z-index:2;background:var(--paper-2);color:var(--ink-soft);
+  font-size:.7rem;min-width:3.6em;text-align:right;white-space:nowrap;border-right:1.5px solid var(--rule-strong)}
+table.sheetview thead .rown{z-index:4}
+table.sheetview td.blank{background:rgba(120,105,80,.035)}
+table.sheetview tr.titlerow td{font-family:var(--pen);font-size:.95rem;font-weight:700;
+  background:rgba(120,105,80,.07);white-space:normal}
+table.sheetview tr:hover td:not(.rown){background:rgba(255,223,80,.12)}
 table.sheetview tr.hit td{background:var(--hl-yellow)}
+table.sheetview input.cellin{width:100%;min-width:6em;font:inherit;color:var(--pen-blue);
+  border:none;border-bottom:1.5px solid var(--ink);background:#fff;padding:1px 2px}
+table.sheetview input.cellin:focus{outline:none}
 .eval{border-left:3px solid var(--rule-strong);padding:6px 0 6px 12px;margin-bottom:10px}
 .eval b{font-family:var(--hand);font-size:0.944rem}
 .weekgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
@@ -585,6 +630,17 @@ function pToday(){
       '<div class="stat"><small>오늘 전담</small><b>'+specCount(specDay(t)?t:nextSchoolDay())+'</b></div>'+
     '</div></div>';
 
+  // 학년 공지 — 첫 화면에서 바로 올리고 바로 봅니다
+  var notices=memosOf('공지');
+  h += '<div class="sheet"><div class="tape"></div><h3 class="title"><span class="mark">학년 공지</span>'+
+    '<span class="more">'+(notices.length? notices.length+'건' : '올릴 공지가 있으면 여기에 적어 주세요')+'</span></h3>'+
+    '<div class="addline"><input id="ntText" placeholder="예) 금요일 학년 협의회 자료는 목요일까지 부탁드려요">'+
+      '<button type="button" class="btn sm" id="ntAdd">＋ 공지 올리기</button></div>'+
+    (notices.length ? '<ul class="notice">'+notices.slice(0,6).map(noticeRow).join('')+'</ul>'
+                    : '<div class="empty">아직 올라온 공지가 없어요.</div>')+
+    (notices.length>6 ? '<div style="margin-top:10px"><button type="button" class="btn line sm" data-go="memo">공지 전체 보기</button></div>' : '')+
+    '</div>';
+
   var sd = specDay(t) ? t : nextSchoolDay();
   h += '<div class="sheet"><h3 class="title"><span class="mark">'+(sd===t?'오늘 전담':'다음 등교일 전담')+'</span>'+
     '<span class="more">'+md(sd)+' · 빈칸은 담임 수업</span></h3>'+ ttTable(sd, true) +'</div>';
@@ -605,7 +661,14 @@ function pToday(){
     '</div></div>';
   h += '</div>';
 
-  var memos=(d.memos||[]).slice(0,4);
+  var heads=memosOf('부장회의');
+  if (heads.length){
+    h += '<div class="sheet plain"><h3 class="title"><span class="mark">부장회의 결과</span>'+
+      '<span class="more">최근 '+Math.min(heads.length,4)+'건</span></h3>'+
+      '<ul class="notice">'+heads.slice(0,4).map(noticeRow).join('')+'</ul>'+
+      '<div style="margin-top:12px"><button type="button" class="btn line sm" data-go="memo">메모판 열기</button></div></div>';
+  }
+  var memos=memosOf('메모').slice(0,4);
   if (memos.length){
     h += '<div class="sheet plain"><h3 class="title"><span class="mark">메모판</span><span class="more">최근 '+memos.length+'장</span></h3>'+
       '<div class="notes">'+memos.map(noteCard).join('')+'</div>'+
@@ -618,6 +681,22 @@ function pToday(){
   $('view').innerHTML=h;
   wire(); tickClock();
   if ($('evAdd')) $('evAdd').onclick=addEvent;
+  if ($('ntAdd')) $('ntAdd').onclick=addNotice;
+  if ($('ntText')) $('ntText').addEventListener('keydown', function(e){ if(e.key==='Enter') addNotice(); });
+}
+function addNotice(){
+  var t=$('ntText'); if (!t) return;
+  var text=t.value.trim();
+  if (!text) return toast('공지 내용을 적어 주세요.');
+  if (!needName()) return;
+  act('addMemo', { text:text, color:'', kind:'공지' }, '공지를 올렸어요.');
+}
+/* 공지·부장회의는 쪽지보다 목록이 읽기 편해서 줄로 보여 줍니다 */
+function noticeRow(m){
+  return '<li'+(m.pending?' class="pending"':'')+'><span class="t">'+esc(m.text)+'</span>'+
+    '<span class="who">'+esc(m.who||'')+' · '+esc((m.at||'').slice(5,10))+'</span>'+
+    (m.row ? '<button type="button" class="x" data-delmemo="'+m.row+'" title="내리기">✕</button>'
+           : '<span class="saving">저장 중</span>')+'</li>';
 }
 function daySubjects(ds){
   var day=specDay(ds);
@@ -1020,17 +1099,19 @@ function pEval(){
         return '<button type="button" class="chip '+(S.term===t.term?'on':'')+'" data-term="'+esc(t.term)+'">'+
                esc(t.term)+'<span class="n">'+n+'</span></button>'; }).join('')+'</div>' : '');
 
-  // 영역별 횟수
-  var byArea={}, total=0;
-  subs.forEach(function(sj){ sj.rows.forEach(function(r){
-    var a=(r.area||'').trim()||'(영역 없음)';
-    (byArea[a]=byArea[a]||{n:0,subs:{}}); byArea[a].n++; byArea[a].subs[sj.subject]=1; total++;
-  }); });
-  var areas=Object.keys(byArea).sort(function(a,b){ return byArea[b].n-byArea[a].n; });
-  h+='<hr class="rule"><div class="small muted" style="margin-bottom:8px">'+esc(S.term)+' · 영역별 횟수 (전 과목 '+total+'회)</div>'+
-    '<div class="chips">'+areas.map(function(a){
-      return '<span class="chip">'+esc(a)+' <b>'+byArea[a].n+'회</b>'+
-             '<span class="n">'+Object.keys(byArea[a].subs).length+'과목</span></span>'; }).join('')+'</div>';
+  // 과목마다 영역이 몇 회씩인지 — 과목별로 묶어서 보여 줍니다
+  var total=0;
+  subs.forEach(function(sj){ total+=sj.rows.length; });
+  h+='<hr class="rule"><div class="small muted" style="margin-bottom:8px">'+esc(S.term)+' · 과목별 영역 횟수 (모두 '+total+'회)</div>'+
+    '<div class="evsum">'+subs.map(function(sj){
+      var mine={};
+      sj.rows.forEach(function(r){ var a=(r.area||'').trim()||'(영역 없음)'; mine[a]=(mine[a]||0)+1; });
+      var keys=Object.keys(mine).sort(function(a,b){ return mine[b]-mine[a]; });
+      return '<div class="evsum-row" data-sub="'+esc(sj.subject)+'">'+
+        '<b>'+esc(sj.subject)+'</b><span class="cnt">'+sj.rows.length+'회</span>'+
+        '<span class="areas">'+keys.map(function(a){
+          return '<span class="chip green sm">'+esc(a)+' '+mine[a]+'회</span>'; }).join('')+'</span></div>';
+    }).join('')+'</div>';
 
   // 월별 몰림
   var byMonth={};
@@ -1064,7 +1145,9 @@ function pEval(){
 
   $('view').innerHTML=h;
   each($('view').querySelectorAll('.chip[data-term]'), function(b){ b.onclick=function(){ S.term=b.dataset.term; S.subject=''; pEval(); }; });
-  each($('view').querySelectorAll('.chip[data-sub]'), function(b){ b.onclick=function(){ S.subject=b.dataset.sub; pEval(); }; });
+  each($('view').querySelectorAll('[data-sub]'), function(b){ b.onclick=function(){
+    S.subject=b.dataset.sub; pEval();
+    var c=$('view').querySelectorAll('.sheet')[1]; if(c) c.scrollIntoView({behavior:'smooth',block:'start'}); }; });
   wire();
 }
 
@@ -1103,19 +1186,43 @@ function noteCard(m){
     (m.row ? '<button type="button" class="x" data-delmemo="'+m.row+'" title="떼기">✕</button>'
            : '<span class="saving">저장 중</span>')+'</div>';
 }
+/* ───── 메모 종류 ───── */
+var MKINDS=[
+  { k:'공지',     label:'공지',        hint:'모두가 봐야 하는 전달 사항. [오늘] 첫 화면 맨 위에 뜹니다' },
+  { k:'부장회의', label:'부장회의 결과', hint:'부장회의에서 나온 내용을 학년에 공유' },
+  { k:'메모',     label:'메모',        hint:'그 밖의 쪽지' }
+];
+function mkind(m){ var k=(m&&m.kind)||'메모'; return MKINDS.some(function(x){return x.k===k;})?k:'메모'; }
+function memosOf(kind){ return (S.d.memos||[]).filter(function(m){ return mkind(m)===kind; }); }
+
 function pMemo(){
   var ms=S.d.memos||[];
+  if (!S.memoKind || !MKINDS.some(function(x){ return x.k===S.memoKind; })) S.memoKind='공지';
+  var cur=MKINDS.filter(function(x){ return x.k===S.memoKind; })[0];
+  var list=memosOf(S.memoKind);
+
   var h='<div class="sheet"><div class="tape"></div><h3 class="title"><span class="mark">학년 메모판</span>'+
-    '<span class="more">전달 사항·협의 내용을 붙여 두세요</span></h3>'+
-    '<div class="formrow"><div class="f"><label>메모</label><textarea id="moText" rows="2" placeholder="예) 금요일 학년 협의회 자료는 목요일까지 부탁드려요"></textarea></div></div>'+
+    '<span class="more">'+esc(cur.hint)+'</span></h3>'+
+    '<div class="chips">'+MKINDS.map(function(x){
+      return '<button type="button" class="chip '+(S.memoKind===x.k?'on':'')+'" data-mk="'+esc(x.k)+'">'+
+             esc(x.label)+'<span class="n">'+memosOf(x.k).length+'</span></button>'; }).join('')+'</div>'+
+    '<hr class="rule">'+
+    '<div class="formrow"><div class="f"><label>'+esc(cur.label)+' 내용</label>'+
+      '<textarea id="moText" rows="2" placeholder="'+esc(S.memoKind==='부장회의'
+        ? '예) 10월 학예회는 11/7(금) 5~6교시, 학년별 20분씩'
+        : (S.memoKind==='공지' ? '예) 금요일 학년 협의회 자료는 목요일까지 부탁드려요'
+                               : '예) 6-3 교실 프로젝터 수리 완료'))+'"></textarea></div></div>'+
     '<div class="chips" style="margin-top:10px">'+
       ['','pink','mint','blue'].map(function(c,i){
         return '<button type="button" class="chip mocolor '+(i===0?'on':'')+'" data-color="'+c+'">'+['노랑','분홍','민트','파랑'][i]+'</button>'; }).join('')+
-      '<button type="button" class="btn sm" id="moAdd">＋ 붙이기</button></div>'+
+      '<button type="button" class="btn sm" id="moAdd">＋ '+esc(cur.label)+' 붙이기</button></div>'+
     '<hr class="rule">'+
-    (ms.length?'<div class="notes">'+ms.map(noteCard).join('')+'</div>':'<div class="empty">아직 메모가 없어요.</div>')+
+    (list.length?'<div class="notes">'+list.map(noteCard).join('')+'</div>'
+               :'<div class="empty">아직 '+esc(cur.label)+'이(가) 없어요.</div>')+
     '</div>';
   $('view').innerHTML=h;
+  each($('view').querySelectorAll('[data-mk]'), function(b){
+    b.onclick=function(){ S.memoKind=b.dataset.mk; pMemo(); }; });
   var color='';
   each($('view').querySelectorAll('.mocolor'), function(b){ b.onclick=function(){
     color=b.dataset.color;
@@ -1125,7 +1232,7 @@ function pMemo(){
     var text=$('moText').value.trim();
     if (!text) return toast('내용을 적어 주세요.');
     if (!needName()) return;
-    act('addMemo', { text:text, color:color }, '메모를 붙였어요.');
+    act('addMemo', { text:text, color:color, kind:S.memoKind }, esc(cur.label)+'을(를) 붙였어요.');
   };
   wire();
 }
@@ -1139,7 +1246,6 @@ function supGroups(){
 }
 function won2(v){ return Number(String(v==null?'':v).replace(/[^0-9.-]/g,''))||0; }
 function supRows(g){ return sup().rows.filter(function(r){ return !g || r.group===g; }); }
-function isPrep(g){ return /학습\s*준비물/.test(g||''); }
 var UNIT_OF=['학년/학급','모둠/짝','개인'];
 
 /* 시트 머리글 순서 그대로 한 줄 만들기 */
@@ -1165,30 +1271,28 @@ function supWidths(){
 }
 function supTitle(){ return (S.d.year?S.d.year+'학년도 ':'')+(S.d.grade||6)+'학년 준비물·구입 요청'; }
 
+/* 어느 탭이든 학교 서식으로 — 반마다 한 장, 반이 없는 줄은 「학년 공통」 장에 모읍니다 */
 function prepSheetsFor(group){
-  var cls=classesList(), rows=supRows(group);
-  return cls.map(function(c){
-    return prepFormSheet(c+'반', (S.d.grade||6)+'학년 '+c+'반 '+group+' 신청',
-      rows.filter(function(r){ return String(r.cls||'')===String(c); }), 20);
+  var cls=classesList(), rows=supRows(group), out=[];
+  cls.forEach(function(c){
+    out.push(prepFormSheet(c+'반', (S.d.grade||6)+'학년 '+c+'반 '+group+' 신청',
+      rows.filter(function(r){ return String(r.cls||'')===String(c); }), 20));
   });
+  var common=rows.filter(function(r){ return !cls.some(function(c){ return String(r.cls||'')===String(c); }); });
+  if (common.length) out.push(prepFormSheet('학년 공통', (S.d.grade||6)+'학년 '+group+' 신청 (학년 공통)', common, 5));
+  return out;
 }
 function downloadSup(group){
   var sheets, fname, stamp=today();
   try {
-    if (group && isPrep(group)){
+    if (group){
       sheets=prepSheetsFor(group);
       fname=(S.d.grade||6)+'학년 '+group+' 신청_'+stamp+'.xlsx';
-    } else if (group){
-      sheets=[simpleSheet({ name:group, title:supTitle()+' — '+group, head:supHead(),
-                            widths:supWidths(), rows:supRows(group).map(supLine) })];
-      fname=(S.d.grade||6)+'학년 준비물요청_'+group+'_'+stamp+'.xlsx';
     } else {
       sheets=[];
       supGroups().forEach(function(g){
-        if (isPrep(g)) sheets=sheets.concat(prepSheetsFor(g).map(function(sh){
-          sh.name=(g.length>6?'준비물':g)+' '+sh.name; return sh; }));
-        else sheets.push(simpleSheet({ name:g, title:supTitle()+' — '+g, head:supHead(),
-                                       widths:supWidths(), rows:supRows(g).map(supLine) }));
+        sheets=sheets.concat(prepSheetsFor(g).map(function(sh){
+          sh.name=(g.length>6?g.slice(0,6):g)+' '+sh.name; return sh; }));
       });
       fname=(S.d.grade||6)+'학년 준비물요청_전체_'+stamp+'.xlsx';
     }
@@ -1200,7 +1304,6 @@ function downloadSup(group){
 function pBuy(){
   var groups=supGroups();
   if (!S.buyTab || groups.indexOf(S.buyTab)<0) S.buyTab=groups[0];
-  var prep=isPrep(S.buyTab);
   var rows=supRows(S.buyTab), all=sup().rows;
   var open=rows.filter(function(x){ return x.status!=='완료'; });
   var sum=rows.reduce(function(a,x){ return a+won2(x.price); },0);
@@ -1220,47 +1323,46 @@ function pBuy(){
       '<button type="button" class="btn sm" data-dl="'+esc(S.buyTab)+'">⤓ 이 탭 엑셀로</button>'+
       '<button type="button" class="chip" data-dl="">⤓ 전체 (탭마다 한 장)</button>'+
       '<span class="small muted" style="align-self:center">'+esc(S.buyTab)+' · '+rows.length+'건 · '+sum.toLocaleString('ko-KR')+'원'+
-        (prep?' · 학교 서식(반별 시트)으로 나옵니다':'')+'</span>'+
+        ' · 학교 서식(반별 시트)으로 나옵니다</span>'+
     '</div><hr class="rule">'+
 
     '<div class="formrow">'+
-      (prep?'<div class="f" style="max-width:110px"><label>반</label><select id="spCls">'+
+      '<div class="f" style="max-width:130px"><label>반</label><select id="spCls">'+
         classesList().map(function(c){ return '<option value="'+c+'"'+(S.myCls===c?' selected':'')+'>'+esc(clsLabel(c))+'</option>'; }).join('')+
-        '</select></div>':'')+
-      '<div class="f"><label>'+(prep?'내용':'품목')+'</label><input id="spName" placeholder="예) 4절 도화지"></div>'+
+        '<option value="">학년 공통</option></select></div>'+
+      '<div class="f"><label>내용</label><input id="spName" placeholder="예) 4절 도화지"></div>'+
       '<div class="f" style="max-width:120px"><label>규격</label><input id="spSpec" placeholder="흰색"></div>'+
       '<div class="f" style="max-width:90px"><label>수량</label><input id="spQty" inputmode="numeric" placeholder="100"></div>'+
-      '<div class="f" style="max-width:110px"><label>'+(prep?'예상단가':'단가')+'</label><input id="spUnit" inputmode="numeric" placeholder="300"></div>'+
-      '<div class="f" style="max-width:120px"><label>'+(prep?'예상금액':'금액')+'</label><input id="spPrice" inputmode="numeric" placeholder="자동"></div>'+
+      '<div class="f" style="max-width:110px"><label>예상단가</label><input id="spUnit" inputmode="numeric" placeholder="300"></div>'+
+      '<div class="f" style="max-width:120px"><label>예상금액</label><input id="spPrice" inputmode="numeric" placeholder="자동"></div>'+
     '</div>'+
     '<div class="formrow">'+
-      (prep
-        ? '<div class="f" style="max-width:140px"><label>관련교과</label><input id="spSubject" placeholder="미술"></div>'+
-          '<div class="f" style="max-width:170px"><label>제공단위</label><select id="spUnitOf">'+
-            UNIT_OF.map(function(u){ return '<option value="'+esc(u)+'">'+esc(u)+'</option>'; }).join('')+'</select></div>'
-        : '<div class="f"><label>쓸 곳</label><input id="spUse" placeholder="미술 수업"></div>')+
+      '<div class="f" style="max-width:140px"><label>관련교과</label><input id="spSubject" placeholder="미술"></div>'+
+      '<div class="f" style="max-width:170px"><label>제공단위</label><select id="spUnitOf">'+
+        UNIT_OF.map(function(u){ return '<option value="'+esc(u)+'">'+esc(u)+'</option>'; }).join('')+'</select></div>'+
+      '<div class="f"><label>쓸 곳</label><input id="spUse" placeholder="미술 수업"></div>'+
       '<div class="f"><label>비고</label><input id="spNote" placeholder="선택"></div>'+
       '<button type="button" class="btn" id="spAdd">＋ '+esc(S.buyTab)+'에 추가</button>'+
     '</div>'+
 
     (rows.length
       ? '<div class="tablewrap"><table class="list"><thead><tr>'+
-          (prep?'<th>반</th>':'')+
-          '<th>'+(prep?'내용':'품목')+'</th><th>규격</th><th class="num">수량</th><th class="num">'+(prep?'예상단가':'단가')+'</th><th class="num">'+(prep?'예상금액':'금액')+'</th>'+
-          '<th>'+(prep?'관련교과':'쓸 곳')+'</th>'+(prep?'<th>제공단위</th>':'')+'<th>요청</th><th>상태</th><th></th></tr></thead><tbody>'+
+          '<th>반</th><th>내용</th><th>규격</th><th class="num">수량</th><th class="num">예상단가</th><th class="num">예상금액</th>'+
+          '<th>관련교과</th><th>제공단위</th><th>쓸 곳</th><th>요청</th><th>상태</th><th></th></tr></thead><tbody>'+
         rows.map(function(x){
           return '<tr'+(x.pending?' class="pendrow"':'')+'>'+
-            (prep?'<td class="small">'+esc(x.cls?clsLabel(x.cls):'—')+'</td>':'')+
+            '<td class="small">'+esc(x.cls?clsLabel(x.cls):'학년 공통')+'</td>'+
             '<td>'+esc(x.name)+(x.note?'<br><span class="small muted">'+esc(x.note)+'</span>':'')+'</td>'+
             '<td class="small">'+esc(x.spec)+'</td><td class="num">'+esc(x.qty)+'</td>'+
             '<td class="num">'+esc(won(x.unit))+'</td><td class="num">'+esc(won(x.price))+'</td>'+
-            '<td class="small">'+esc(prep?x.subject:x.use)+'</td>'+
-            (prep?'<td class="small">'+esc(x.unitOf)+'</td>':'')+
+            '<td class="small">'+esc(x.subject)+'</td>'+
+            '<td class="small">'+esc(x.unitOf)+'</td>'+
+            '<td class="small">'+esc(x.use)+'</td>'+
             '<td class="small muted">'+esc(x.who)+'<br>'+esc((x.at||'').slice(5,10))+'</td>'+
             '<td>'+(x.row?'<button type="button" class="chip '+(x.status==='완료'?'green on':x.status==='구입중'?'blue on':'amber')+'" data-sp="'+x.row+'" data-status="'+(x.status==='요청'?'구입중':x.status==='구입중'?'완료':'요청')+'">'+esc(x.status||'요청')+'</button>':'<span class="saving">저장 중</span>')+'</td>'+
             '<td>'+(x.row?'<button type="button" class="x" data-delsp="'+x.row+'" style="border:none;background:transparent;color:var(--rule-strong)">✕</button>':'')+'</td></tr>';
         }).join('')+
-        '<tr class="sumrow"><td colspan="'+(prep?5:4)+'">계</td><td class="num">'+sum.toLocaleString('ko-KR')+'</td><td colspan="'+(prep?5:4)+'"></td></tr>'+
+        '<tr class="sumrow"><td colspan="5">계</td><td class="num">'+sum.toLocaleString('ko-KR')+'</td><td colspan="6"></td></tr>'+
         '</tbody></table></div>'
       : '<div class="empty">'+esc(S.buyTab)+' 탭에 아직 요청이 없어요.</div>')+
     '</div>';
@@ -1295,15 +1397,10 @@ function pBuy(){
     if (!name) return toast('품목을 적어 주세요.');
     if (!needName()) return;
     var payload = { group:S.buyTab, name:name, spec:$('spSpec').value.trim(), qty:$('spQty').value.trim(),
-      unit:$('spUnit').value.trim(), price:$('spPrice').value.trim(), note:$('spNote').value.trim() };
-    if (prep){
-      payload.cls=$('spCls').value;
-      payload.subject=$('spSubject').value.trim();
-      payload.unitOf=$('spUnitOf').value;
-      lsSet('g6_cls', payload.cls);
-    } else {
-      payload.use=$('spUse').value.trim();
-    }
+      unit:$('spUnit').value.trim(), price:$('spPrice').value.trim(), note:$('spNote').value.trim(),
+      cls:$('spCls').value, subject:$('spSubject').value.trim(),
+      unitOf:$('spUnitOf').value, use:$('spUse').value.trim() };
+    if (payload.cls) lsSet('g6_cls', payload.cls);
     act('addSupply', payload, S.buyTab+'에 적었어요.');
   };
   each($('view').querySelectorAll('[data-sp]'), function(b){
@@ -1411,6 +1508,70 @@ function drawRec(list){
     '</tbody></table><div class="small muted" style="margin-top:6px">문구 '+raw.length+'개를 '+S.recRows.length+'명에게 차례대로 돌렸어요.</div>';
 }
 
+/* ───── 구글시트 원본 표 그리기 ─────
+   시트를 그대로 옮기면 줄마다 칸 수가 달라 표가 어긋나 보입니다.
+   그래서 ① 가장 넓은 줄에 폭을 맞추고 ② 머리글로 보이는 줄을 찾아 위에 붙이고
+   ③ 가로·세로로 스크롤되는 틀에 넣습니다. */
+function filled(cells){ return (cells||[]).filter(function(x){ return String(x==null?'':x).trim(); }).length; }
+function sheetTable(rows, o){
+  o=o||{};
+  if (!rows || !rows.length) return '<div class="empty">'+esc(o.empty||'내용이 없어요.')+'</div>';
+  var width=rows.reduce(function(m,r){ return Math.max(m, (r[1]||[]).length); }, 1);
+  var headAt=-1;
+  if (!o.noHead) for (var i=0; i<rows.length && i<6; i++){ if (filled(rows[i][1])>=2){ headAt=i; break; } }
+
+  function line(r, tag){
+    var out=[];
+    for (var c=0;c<width;c++){
+      var t=String((r[1]||[])[c]==null?'':(r[1]||[])[c]);
+      out.push('<'+tag+(t.trim()?'':' class="blank"')+'>'+(o.q?mark(t,o.q):esc(t))+'</'+tag+'>');
+    }
+    return out.join('');
+  }
+  var h='<div class="tablewrap"><table class="sheetview">';
+  if (headAt>=0) h+='<thead><tr><th class="rown">'+esc(o.label||'행')+'</th>'+line(rows[headAt],'th')+'</tr></thead>';
+  h+='<tbody>';
+  // 머리글보다 위에 있는 제목 줄은 한 줄로 이어 붙입니다
+  rows.slice(0, headAt<0?0:headAt).forEach(function(r){
+    h+='<tr class="titlerow"><td class="rown">'+esc(r[0])+'</td><td colspan="'+width+'">'+
+       esc(filled(r[1])?(r[1]||[]).filter(function(x){ return String(x).trim(); }).join(' '):'')+'</td></tr>';
+  });
+  rows.slice(headAt<0?0:headAt+1).forEach(function(r){
+    h+='<tr data-r="'+esc(r[0])+'"><td class="rown">'+esc(o.rowLabel?o.rowLabel(r):r[0])+'</td>'+line(r,'td')+'</tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+
+/* 자료 탭에서 칸 고치기 — 두 번 누르면 입력칸이 됩니다 */
+function wireCellEdit(tab){
+  var from=(S.d.rawFrom||{})[tab]||0;
+  each($('view').querySelectorAll('table.sheetview tbody tr[data-r] td:not(.rown)'), function(td){
+    td.ondblclick=function(){
+      if (td.querySelector('input')) return;
+      var tr=td.parentNode, row=Number(tr.dataset.r);
+      var col=from + Array.prototype.indexOf.call(tr.children, td);   // rown 한 칸이 앞에 있어 상쇄됩니다
+      var old=td.textContent;
+      var inp=document.createElement('input');
+      inp.className='cellin'; inp.value=old;
+      td.textContent=''; td.appendChild(inp); inp.focus(); inp.select();
+      var done=false;
+      function finish(save){
+        if (done) return; done=true;
+        var val=inp.value;
+        td.textContent = save ? val : old;
+        if (!save || val===old) return;
+        act('save', { tab:tab, row:row, col:col, old:old, value:val }, '고쳤어요.')
+          .catch(function(){ td.textContent=old; });
+      }
+      inp.addEventListener('blur', function(){ finish(true); });
+      inp.addEventListener('keydown', function(e){
+        if (e.key==='Enter'){ e.preventDefault(); finish(true); }
+        if (e.key==='Escape'){ e.preventDefault(); finish(false); }
+      });
+    };
+  });
+}
+
 /* ───── 자료 ───── */
 function pData(){
   var raw=S.d.raw||{}, names=Object.keys(raw);
@@ -1420,15 +1581,15 @@ function pData(){
     '<div class="chips">'+names.map(function(n){ return '<button type="button" class="chip '+(S.tab===n?'on':'')+'" data-tab="'+esc(n)+'">'+esc(n)+'</button>'; }).join('')+'</div>';
   if (S.tab){
     var rows=raw[S.tab]||[];
-    h+='<hr class="rule"><div class="small muted" style="margin-bottom:6px">'+esc(S.tab)+' · '+rows.length+'행</div>'+
-      '<div class="tablewrap"><table class="sheetview"><tbody>'+rows.map(function(r){
-        return '<tr data-r="'+r[0]+'">'+r[1].map(function(c){ return '<td>'+esc(c)+'</td>'; }).join('')+'</tr>';
-      }).join('')+'</tbody></table></div>';
+    h+='<hr class="rule"><div class="small muted" style="margin-bottom:6px">'+esc(S.tab)+' · '+rows.length+'행'+
+      ' · 칸을 두 번 누르면 고칠 수 있어요</div>'+
+      sheetTable(rows, { empty:'이 탭은 비어 있어요.', edit:true });
   }
   h+='</div>';
   $('view').innerHTML=h;
   each($('view').querySelectorAll('.chip[data-tab]'), function(b){ b.onclick=function(){ S.tab=b.dataset.tab; pData(); }; });
   $('openSheet').onclick=function(){ if (S.d.sheetUrl) window.open(S.d.sheetUrl,'_blank','noopener'); };
+  if (S.tab) wireCellEdit(S.tab);
   wire();
 }
 
@@ -1478,18 +1639,14 @@ function pSchool(){
       });
     });
     h+='<div class="small muted" style="margin:4px 0 10px">“'+esc(q)+'” '+hits.length+'건</div>';
-    h+= hits.length ? '<table class="sheetview"><tbody>'+hits.map(function(x){
-        return '<tr><td class="rown">'+esc(x.tab)+' '+x.row+'</td>'+
-          x.cells.map(function(v){ return '<td>'+mark(v,q)+'</td>'; }).join('')+'</tr>';
-      }).join('')+'</tbody></table>'
-      : '<div class="empty">찾는 내용이 없어요.</div>';
+    // 찾은 줄은 어느 탭 몇 행인지 함께 보여 줍니다
+    h+= sheetTable(hits.map(function(x){ return [x.tab+' '+x.row, x.cells]; }),
+          { q:q, noHead:true, empty:'찾는 내용이 없어요.' });
   } else {
     h+='<div class="chips" style="margin-bottom:10px">'+tabs.map(function(t){
       return '<button type="button" class="chip '+(S.scTab===t.name?'on':'')+'" data-sct="'+esc(t.name)+'">'+esc(t.name)+'</button>'; }).join('')+'</div>';
     var cur=tabs.filter(function(t){ return t.name===S.scTab; })[0];
-    h+= cur ? '<table class="sheetview"><tbody>'+cur.rows.map(function(r){
-        return '<tr><td class="rown">'+r[0]+'</td>'+r[1].map(function(v){ return '<td>'+esc(v)+'</td>'; }).join('')+'</tr>';
-      }).join('')+'</tbody></table>' : '<div class="empty">내용이 없어요.</div>';
+    h+= sheetTable(cur?cur.rows:null, { empty:'내용이 없어요.' });
   }
   h+='</div>';
   $('view').innerHTML=h;
@@ -2043,7 +2200,7 @@ function wire(){
 
 /* ───── 미리보기용 가짜 자료 ───── */
 /* 미리보기(가짜 자료)에서도 방금 누른 것이 화면에 남도록 잠깐 기억해 둡니다 */
-var MOCKX = { groups:[], gone:[], records:[] };
+var MOCKX = { groups:[], gone:[], records:[], memos:[], supplies:[] };
 function MOCK(action,p){
   if (action==='login') return { token:'preview' };
   if (action==='addGroup'){ MOCKX.groups.push(String(p.name));
@@ -2052,6 +2209,14 @@ function MOCK(action,p){
     MOCKX.groups = MOCKX.groups.filter(function(g){ return g!==String(p.name); }); return { ok:true }; }
   if (action==='addRecord'){ MOCKX.records.push({ row:0, date:String(p.date||''), event:String(p.event||''),
     subject:String(p.subject||'창체'), text:String(p.text||''), pending:true }); return { ok:true }; }
+  if (action==='addMemo'){ MOCKX.memos.unshift({ row:0, at:new Date().toISOString().slice(0,10),
+    who:String(p.who||''), text:String(p.text||''), color:String(p.color||''),
+    kind:String(p.kind||'메모'), pending:true }); return { ok:true }; }
+  if (action==='addSupply'){ MOCKX.supplies.push({ row:0, group:String(p.group||'기타'),
+    at:new Date().toISOString().slice(0,10), who:String(p.who||''), cls:String(p.cls||''),
+    name:String(p.name||''), spec:String(p.spec||''), qty:String(p.qty||''), unit:String(p.unit||''),
+    price:String(p.price||''), subject:String(p.subject||''), unitOf:String(p.unitOf||''),
+    use:String(p.use||''), note:String(p.note||''), status:'요청', pending:true }); return { ok:true }; }
   if (action==='school'){
     if (String(p&&p.code)!=='2606') throw new Error('코드가 맞지 않습니다.');
     return { title:'2026 학교 업무 효율화 자료(미리보기)', url:'https://docs.google.com', tabs:[
@@ -2089,8 +2254,10 @@ function MOCK(action,p){
       { row:21, name:'학생명부', due:'', cls:{'1':true,'2':true,'3':true,'4':true}, link:'' }
     ]},
     events:[{row:3,date:dz(0),text:'학년 협의회 15:00 (6-1 교실)',own:true,important:true,who:'김은서'},{row:4,date:dz(2),text:'현장체험학습 사전답사',own:true,who:'박교사'},{row:5,date:dz(3),text:'수행평가(사회) 실시',own:true,important:true,who:'김은서'},{row:6,date:dz(-2),text:'학부모 상담 주간 시작',own:true,who:'이교사'},{row:7,date:dz(5),text:'독서골든벨',own:true,who:'정교사'},{date:dz(9),text:'학예회 준비 주간'},{date:dz(1),text:'찾아가는 정보통신윤리교육(시청각실, 1~2교시, 6학년 전체)',who:'최영훈',src:'학사일정'},{date:dz(4),text:'직원 협의회(시청각실, 15:00~)',who:'최영훈',src:'학사일정'}],
-    memos:[{row:2,at:dz(0),who:'김은서',text:'협의회 자료는 목요일까지 공유 부탁드려요.',color:''},
-      {row:3,at:dz(-1),who:'박교사',text:'체험학습 버스 2대 예약 완료!',color:'mint'}],
+    memos:[{row:2,at:dz(0),who:'김은서',text:'10/2(금) 학년 협의회 자료는 목요일까지 공유 부탁드려요.',color:'',kind:'공지'},
+      {row:3,at:dz(-1),who:'박교사',text:'체험학습 버스 2대 예약 완료!',color:'mint',kind:'메모'},
+      {row:4,at:dz(-2),who:'김은서',text:'학예회 일정 11/7(금) 5~6교시로 확정, 학년별 20분씩.',color:'',kind:'부장회의'},
+      {row:5,at:dz(-3),who:'김은서',text:'졸업앨범 촬영은 10월 셋째 주, 학급별 시간은 추후 안내.',color:'',kind:'부장회의'}],
     supplies:{ head:['구분','반','등록일','품목','규격','수량','예상단가','예상금액','관련교과','제공단위','쓸 곳','요청자','상태','비고'],
       col:{group:0,cls:1,at:2,name:3,spec:4,qty:5,unit:6,price:7,subject:8,unitOf:9,use:10,who:11,status:12,note:13},
       groups:['학습준비물','행사물품','교실비품','도서·교구','기타'],
@@ -2121,11 +2288,20 @@ function MOCK(action,p){
       {row:6,date:'5/2',event:'학교폭력예방교육',subject:'창체',text:'역할극으로 갈등 해결 방법을 익힘.'}],
     tabs:{ records:'누가기록' },
     links:[{label:'학교 업무 효율화 자료',url:'https://docs.google.com'},{label:'학급 교육과정 제출 폴더',url:'https://drive.google.com'}],
-    raw:{ '편제 시수':[[1,['구분','기준시수','편성시수']],[2,['국어','408','408']]] }
+    raw:{ '편제 시수':[
+        [1,['2026학년도 6학년 편제 시수','','','','']],
+        [2,['구분','기준시수','편성시수','증감','비고']],
+        [3,['국어','408','408','0','']],
+        [4,['사회','102','102','0','독도교육 10차시 포함']],
+        [5,['수학','136','136','0','']],
+        [6,['창의적 체험활동','204','204','0','자율·동아리·봉사·진로']]] },
+    rawFrom:{ '편제 시수':0 }
   };
   MOCKX.groups.forEach(function(g){ if(D.supplies.groups.indexOf(g)<0) D.supplies.groups.push(g); });
   D.supplies.groups = D.supplies.groups.filter(function(g){ return MOCKX.gone.indexOf(g)<0; });
+  D.supplies.rows = D.supplies.rows.concat(MOCKX.supplies);
   D.records = D.records.concat(MOCKX.records);
+  D.memos = MOCKX.memos.concat(D.memos);
   return D;
 }
 
