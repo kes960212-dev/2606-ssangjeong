@@ -172,6 +172,10 @@ main{max-width:1240px;margin:0 auto;padding:16px 20px 56px}
 .tablewrap{overflow-x:auto;margin-top:12px}
 .list .sumrow td{font-weight:700;border-top:1.5px solid var(--ink);background:var(--paper-2)}
 .list tr.pendrow{opacity:.65}
+.chip.newtab{border:1px dashed var(--rule-strong);background:transparent;color:var(--ink-soft)}
+.chip.newtab:hover{background:var(--paper-2);color:var(--ink)}
+.chip .n{font-size:.68rem;margin-left:5px;padding:0 5px;border-radius:999px;background:rgba(0,0,0,.12);vertical-align:1px}
+.chip.on .n{background:rgba(255,255,255,.25)}
 .title{font-family:var(--pen);font-weight:700;letter-spacing:-.01em;font-size:1.292rem;margin:0 0 10px;line-height:1.2;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .title .more{margin-left:auto;font-family:var(--ui);font-size:.74rem;color:var(--ink-soft)}
 .title b{font-weight:400}
@@ -987,24 +991,79 @@ function pWeek(){
 }
 
 /* ───── 평가 ───── */
-function pEval(){
+/* 학기 목록 — 옛 자료(과목 배열)도 그대로 받아 줍니다 */
+function evalTerms(){
   var ev=S.d.evaluation||[];
-  if (!S.subject && ev.length) S.subject=ev[0].subject;
-  var cur=ev.filter(function(x){ return x.subject===S.subject; })[0];
+  if (!ev.length) return [];
+  if (ev[0] && ev[0].subjects) return ev;                    // 새 방식: 학기별
+  return [{ term:'평가계획', tab:'', subjects:ev }];           // 옛 방식
+}
+function pEval(){
+  var terms=evalTerms();
+  if (!terms.length){
+    $('view').innerHTML='<div class="sheet"><h3 class="title"><span class="mark">평가계획</span></h3>'+
+      '<div class="empty">평가계획 탭을 읽지 못했어요.</div></div>';
+    return;
+  }
+  if (!S.term || !terms.some(function(t){ return t.term===S.term; })) S.term=terms[0].term;
+  var curTerm=terms.filter(function(t){ return t.term===S.term; })[0];
+  var subs=curTerm.subjects||[];
+  if (!S.subject || !subs.some(function(x){ return x.subject===S.subject; })) S.subject=(subs[0]||{}).subject;
+  var cur=subs.filter(function(x){ return x.subject===S.subject; })[0];
+
+  // 학기 고르기
+  var h='<div class="sheet"><div class="tape yellow"></div>'+
+    '<h3 class="title"><span class="mark">평가계획</span>'+
+    '<span class="more">'+esc(curTerm.tab||'')+'</span></h3>'+
+    (terms.length>1 ? '<div class="chips">'+terms.map(function(t){
+        var n=(t.subjects||[]).reduce(function(a,x){ return a+x.rows.length; },0);
+        return '<button type="button" class="chip '+(S.term===t.term?'on':'')+'" data-term="'+esc(t.term)+'">'+
+               esc(t.term)+'<span class="n">'+n+'</span></button>'; }).join('')+'</div>' : '');
+
+  // 영역별 횟수
+  var byArea={}, total=0;
+  subs.forEach(function(sj){ sj.rows.forEach(function(r){
+    var a=(r.area||'').trim()||'(영역 없음)';
+    (byArea[a]=byArea[a]||{n:0,subs:{}}); byArea[a].n++; byArea[a].subs[sj.subject]=1; total++;
+  }); });
+  var areas=Object.keys(byArea).sort(function(a,b){ return byArea[b].n-byArea[a].n; });
+  h+='<hr class="rule"><div class="small muted" style="margin-bottom:8px">'+esc(S.term)+' · 영역별 횟수 (전 과목 '+total+'회)</div>'+
+    '<div class="chips">'+areas.map(function(a){
+      return '<span class="chip">'+esc(a)+' <b>'+byArea[a].n+'회</b>'+
+             '<span class="n">'+Object.keys(byArea[a].subs).length+'과목</span></span>'; }).join('')+'</div>';
+
+  // 월별 몰림
   var byMonth={};
-  ev.forEach(function(s){ s.rows.forEach(function(r){ var m=(String(r.when).match(/(\d{1,2})\s*월/)||[])[1]; if(m)(byMonth[m]=byMonth[m]||[]).push(s.subject); }); });
-  var h='<div class="sheet"><h3 class="title"><span class="mark">월별 평가 수</span><span class="more">전 과목</span></h3><div class="chips">'+
-    Object.keys(byMonth).sort(function(a,b){ return a-b; }).map(function(m){
-      var n=byMonth[m].length;
-      return '<span class="chip '+(n>=6?'red on':'')+'">'+m+'월 '+n+'개'+(n>=6?' 몰림':'')+'</span>';
-    }).join('')+'</div><div class="small muted" style="margin-top:8px">한 달에 6개가 넘으면 평가가 몰린 달이에요.</div></div>';
-  h+='<div class="sheet"><h3 class="title"><span class="mark">평가계획</span><span class="more"><span class="chips">'+
-    ev.map(function(x){ return '<button type="button" class="chip '+(S.subject===x.subject?'on':'')+'" data-sub="'+esc(x.subject)+'">'+esc(x.subject)+'</button>'; }).join('')+'</span></span></h3>'+
-    (cur? cur.rows.map(function(r){
-      return '<div class="eval"><b>'+esc(r.when)+' · '+esc(r.unit)+'</b><div>'+esc(r.what)+'</div>'+
-        '<div class="small muted">'+esc([r.area,r.how].filter(String).join(' · '))+'</div></div>';
-    }).join('') : '<div class="empty">평가계획 탭을 읽지 못했어요.</div>')+'</div>';
+  subs.forEach(function(sj){ sj.rows.forEach(function(r){
+    var m=(String(r.when).match(/(\d{1,2})\s*월/)||[])[1];
+    if(m)(byMonth[m]=byMonth[m]||[]).push(sj.subject); }); });
+  var months=Object.keys(byMonth).sort(function(a,b){ return a-b; });
+  if (months.length){
+    h+='<hr class="rule"><div class="small muted" style="margin-bottom:8px">월별 평가 수 — 한 달에 6개가 넘으면 몰린 달이에요</div><div class="chips">'+
+      months.map(function(m){ var n=byMonth[m].length;
+        return '<span class="chip '+(n>=6?'red on':'')+'">'+m+'월 '+n+'개'+(n>=6?' ⚠':'')+'</span>'; }).join('')+'</div>';
+  }
+  h+='</div>';
+
+  // 과목별 상세
+  h+='<div class="sheet"><h3 class="title"><span class="mark">과목별 계획</span>'+
+    '<span class="more">'+esc(S.subject||'')+(cur?' · '+cur.rows.length+'회':'')+'</span></h3>'+
+    '<div class="chips" style="margin-bottom:12px">'+subs.map(function(x){
+      return '<button type="button" class="chip '+(S.subject===x.subject?'on':'')+'" data-sub="'+esc(x.subject)+'">'+
+             esc(x.subject)+'<span class="n">'+x.rows.length+'</span></button>'; }).join('')+'</div>'+
+    (cur ? (function(){
+      // 이 과목의 영역별 횟수
+      var mine={}; cur.rows.forEach(function(r){ var a=(r.area||'').trim()||'(영역 없음)'; mine[a]=(mine[a]||0)+1; });
+      return '<div class="chips" style="margin-bottom:12px">'+Object.keys(mine).sort(function(a,b){ return mine[b]-mine[a]; })
+          .map(function(a){ return '<span class="chip green">'+esc(a)+' '+mine[a]+'회</span>'; }).join('')+'</div>'+
+        cur.rows.map(function(r){
+          return '<div class="eval"><b>'+esc(r.when)+' · '+esc(r.unit)+'</b><div>'+esc(r.what)+'</div>'+
+            '<div class="small muted">'+esc([r.area,r.how].filter(String).join(' · '))+'</div></div>';
+        }).join('');
+    })() : '<div class="empty">내용이 없어요.</div>')+'</div>';
+
   $('view').innerHTML=h;
+  each($('view').querySelectorAll('.chip[data-term]'), function(b){ b.onclick=function(){ S.term=b.dataset.term; S.subject=''; pEval(); }; });
   each($('view').querySelectorAll('.chip[data-sub]'), function(b){ b.onclick=function(){ S.subject=b.dataset.sub; pEval(); }; });
   wire();
 }
@@ -1154,6 +1213,8 @@ function pBuy(){
       var n=supRows(g).length;
       return '<button type="button" class="chip '+(S.buyTab===g?'on':'')+'" data-bt="'+esc(g)+'">'+esc(g)+
              (n?'<span class="n">'+n+'</span>':'')+'</button>'; }).join('')+
+      '<button type="button" class="chip newtab" id="btAdd">＋ 새 탭</button>'+
+      (rows.length===0 && groups.length>1 ? '<button type="button" class="chip" id="btDel" title="빈 탭 지우기">탭 지우기</button>' : '')+
     '</div>'+
     '<div class="chips" style="margin-top:10px">'+
       '<button type="button" class="btn sm" data-dl="'+esc(S.buyTab)+'">⤓ 이 탭 엑셀로</button>'+
@@ -1206,6 +1267,21 @@ function pBuy(){
 
   $('view').innerHTML=h;
   each($('view').querySelectorAll('[data-bt]'), function(b){ b.onclick=function(){ S.buyTab=b.dataset.bt; pBuy(); }; });
+  $('btAdd').onclick=function(){
+    var name=(window.prompt('새 탭 이름을 적어 주세요.\n예) 2학기 추가수합, 졸업앨범, 학예회', '')||'').trim();
+    if (!name) return;
+    if (name.indexOf(',')>=0) return toast('이름에 쉼표는 쓸 수 없어요.');
+    if (groups.indexOf(name)>=0) return toast('이미 있는 탭이에요.');
+    if (!needName()) return;
+    S.buyTab=name;
+    act('addGroup', { name:name }, '「'+name+'」 탭을 만들었어요.');
+  };
+  if ($('btDel')) $('btDel').onclick=function(){
+    if (!confirm('「'+S.buyTab+'」 탭을 지울까요? (내용이 없을 때만 지워져요)')) return;
+    if (!needName()) return;
+    var gone=S.buyTab; S.buyTab=groups.filter(function(g){ return g!==gone; })[0];
+    act('delGroup', { name:gone }, '「'+gone+'」 탭을 지웠어요.');
+  };
   each($('view').querySelectorAll('[data-dl]'), function(b){ b.onclick=function(){ downloadSup(b.dataset.dl); }; });
   // 수량 × 단가 → 금액 자동
   function calc(){
@@ -1243,32 +1319,85 @@ function pBuy(){
 function pRec(){
   var recs=S.d.records||[];
   var events=[]; recs.forEach(function(r){ if (r.event && events.indexOf(r.event)<0) events.push(r.event); });
-  if (!S.recEvent) S.recEvent = events[0] || '';
-  var texts = recs.filter(function(r){ return r.event===S.recEvent && r.text; }).map(function(r){ return r.text; });
+  if (!S.recEvent || events.indexOf(S.recEvent)<0) S.recEvent = events[0] || '';
+  var mine = recs.filter(function(r){ return r.event===S.recEvent; });
+  var texts = mine.filter(function(r){ return r.text; }).map(function(r){ return r.text; });
   var stu=S.d.students||[];
   var clsSet=[]; stu.forEach(function(s){ if(s.cls && clsSet.indexOf(s.cls)<0) clsSet.push(s.cls); }); clsSet.sort();
   var pickCls = S.cls || clsSet[0] || '';
   var list = stu.filter(function(s){ return !pickCls || s.cls===pickCls; });
-  var h='<div class="sheet"><h3 class="title"><span class="mark">창체 누가기록 배분</span>'+
-    '<span class="more">행사 문구를 학생별로 돌려 배분해요</span></h3>'+
-    '<div class="chips">'+events.map(function(e){ return '<button type="button" class="chip '+(S.recEvent===e?'on':'')+'" data-rec="'+esc(e)+'">'+esc(e)+'</button>'; }).join('')+'</div>'+
-    '<div class="chips" style="margin-top:8px">'+clsSet.map(function(c){ return '<button type="button" class="chip blue '+(pickCls===c?'on':'')+'" data-rcls="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div>'+
-    '<div class="formrow" style="margin-top:12px"><div class="f"><label>문구 (줄마다 하나씩 · 비우면 위 행사 문구를 그대로 씁니다)</label>'+
+
+  // ── 주제(행사)와 문구를 시트에 직접 추가 ──
+  var h='<div class="sheet"><div class="tape"></div>'+
+    '<h3 class="title"><span class="mark">창체 누가기록</span>'+
+    '<span class="more">'+esc(S.d.tabs&&S.d.tabs.records||'')+' 탭에 바로 저장돼요</span></h3>'+
+    '<div class="chips">'+
+      (events.length ? events.map(function(e){
+        var n=recs.filter(function(r){ return r.event===e && r.text; }).length;
+        return '<button type="button" class="chip '+(S.recEvent===e?'on':'')+'" data-rec="'+esc(e)+'">'+esc(e)+
+               '<span class="n">'+n+'</span></button>'; }).join('')
+        : '<span class="empty small">아직 주제가 없어요. 오른쪽에서 새로 만들어 보세요.</span>')+
+      '<button type="button" class="chip newtab" id="recNew">＋ 새 주제</button>'+
+    '</div>'+
+    '<hr class="rule">'+
+    '<div class="formrow">'+
+      '<div class="f" style="max-width:190px"><label>주제(행사명)</label>'+
+        '<input id="rcEvent" value="'+esc(S.recEvent)+'" placeholder="예) 교통안전교육"></div>'+
+      '<div class="f" style="max-width:140px"><label>일시</label><input id="rcDate" type="date" value="'+today()+'"></div>'+
+      '<div class="f" style="max-width:120px"><label>과목</label><input id="rcSubject" value="창체"></div>'+
+      '<div class="f"><label>기록할 내용</label>'+
+        '<input id="rcText" placeholder="예) 가상현실 체험으로 교통안전 수칙을 익힘."></div>'+
+      '<button type="button" class="btn sm" id="rcAdd">＋ 기록 추가</button>'+
+    '</div>'+
+    '<div class="small muted" style="margin-top:6px">한 주제에 문구를 여러 개 넣어 두면, 아래에서 학생마다 돌아가며 배분할 수 있어요.</div>'+
+    (mine.length
+      ? '<hr class="rule"><table class="list"><thead><tr><th style="width:96px">일시</th><th>내용</th><th style="width:70px">과목</th></tr></thead><tbody>'+
+        mine.map(function(r){
+          return '<tr'+(r.pending?' class="pendrow"':'')+'><td class="small muted">'+esc(r.date||'')+'</td>'+
+            '<td>'+esc(r.text)+(r.pending?' <span class="saving">저장 중</span>':'')+'</td>'+
+            '<td class="small">'+esc(r.subject||'')+'</td></tr>'; }).join('')+
+        '</tbody></table>'
+      : '')+
+    '</div>';
+
+  // ── 학생별 배분 ──
+  h+='<div class="sheet"><h3 class="title"><span class="mark">학생별로 배분</span>'+
+    '<span class="more">'+esc(S.recEvent||'주제 없음')+' · 문구 '+texts.length+'개</span></h3>'+
+    '<div class="chips">'+clsSet.map(function(c){ return '<button type="button" class="chip blue '+(pickCls===c?'on':'')+'" data-rcls="'+esc(c)+'">'+esc(clsLabel(c))+'</button>'; }).join('')+'</div>'+
+    '<div class="formrow" style="margin-top:12px"><div class="f"><label>문구 (줄마다 하나씩)</label>'+
       '<textarea id="recText" rows="5" placeholder="문구 1&#10;문구 2&#10;문구 3">'+esc(texts.join('\n'))+'</textarea></div></div>'+
     '<div class="chips" style="margin-top:10px">'+
       '<button type="button" class="btn sm" id="recMake">학생별로 배분하기</button>'+
       '<button type="button" class="chip" data-copy="rec">결과 복사</button>'+
-      '<button type="button" class="chip green" id="recSave">시트에 저장</button>'+
+      '<button type="button" class="chip green" id="recSave">배분 결과 저장</button>'+
     '</div>'+
     '<div id="recOut" style="margin-top:14px"></div></div>';
+
   $('view').innerHTML=h;
   each($('view').querySelectorAll('[data-rec]'), function(b){ b.onclick=function(){ S.recEvent=b.dataset.rec; pRec(); }; });
   each($('view').querySelectorAll('[data-rcls]'), function(b){ b.onclick=function(){ S.cls=b.dataset.rcls; pRec(); }; });
+  $('recNew').onclick=function(){
+    var name=(window.prompt('새 주제(행사명)를 적어 주세요.\n예) 학교폭력예방교육', '')||'').trim();
+    if (!name) return;
+    S.recEvent=name; pRec();
+    if ($('rcEvent')) { $('rcEvent').value=name; $('rcText').focus(); }
+    toast('내용을 적고 [＋ 기록 추가]를 누르면 시트에 만들어져요.');
+  };
+  $('rcAdd').onclick=function(){
+    var ev=$('rcEvent').value.trim(), tx=$('rcText').value.trim();
+    if (!ev) return toast('주제를 적어 주세요.');
+    if (!tx) return toast('기록할 내용을 적어 주세요.');
+    if (!needName()) return;
+    S.recEvent=ev;
+    act('addRecord', { event:ev, text:tx, date:$('rcDate').value, subject:$('rcSubject').value.trim() },
+      '「'+ev+'」에 기록을 넣었어요.');
+  };
+  $('rcText').addEventListener('keydown', function(e){ if(e.key==='Enter') $('rcAdd').click(); });
   $('recMake').onclick=function(){ drawRec(list); };
   $('recSave').onclick=function(){
     if (!S.recRows || !S.recRows.length) return toast('먼저 배분해 주세요.');
     if (!needName()) return;
-    act('saveRecords', { event:S.recEvent, cls:pickCls, rows:S.recRows }, '시트에 저장했어요.');
+    act('saveRecords', { event:S.recEvent, cls:pickCls, rows:S.recRows }, '배분 결과를 저장했어요.');
   };
   drawRec(list);
   wire();
@@ -1551,10 +1680,11 @@ function pSearch(){
       hits.push({ g:'메모', t:m.text.slice(0,60), s:m.who||'', go:'memo' }); });
     ((S.d.supplies&&S.d.supplies.rows)||[]).forEach(function(x){ if ((x.name+' '+x.use+' '+(x.note||'')).toLowerCase().indexOf(ql)>=0)
       hits.push({ g:'준비물 · '+x.group, t:x.name, s:(x.status||'요청')+(x.use?' · '+x.use:''), go:'buy' }); });
-    (S.d.evaluation||[]).forEach(function(sj){ sj.rows.forEach(function(r){
-      if ([r.when,r.unit,r.what,r.how].join(' ').toLowerCase().indexOf(ql)>=0)
-        hits.push({ g:'평가 · '+sj.subject, t:r.unit||r.what, s:r.when+' · '+r.what, go:'eval', subject:sj.subject });
-    }); });
+    evalTerms().forEach(function(tm){ (tm.subjects||[]).forEach(function(sj){ sj.rows.forEach(function(r){
+      if ([r.when,r.unit,r.what,r.how,r.area].join(' ').toLowerCase().indexOf(ql)>=0)
+        hits.push({ g:'평가 · '+tm.term+' · '+sj.subject, t:r.unit||r.what, s:r.when+' · '+r.what,
+                    go:'eval', subject:sj.subject, term:tm.term });
+    }); }); });
     if (S.school) (S.school.tabs||[]).forEach(function(tb){
       tb.rows.forEach(function(r){
         var line=r[1].join(' | ');
@@ -1575,6 +1705,7 @@ function pSearch(){
     el.onclick=function(){
       var x=hits[+el.dataset.i];
       if (x.subject) S.subject=x.subject;
+      if (x.term) S.term=x.term;
       if (x.tab) S.tab=x.tab;
       go(x.go);
       if (x.row) setTimeout(function(){ var tr=document.querySelector('table.sheetview tr[data-r="'+x.row+'"]'); if (tr){ tr.classList.add('hit'); tr.scrollIntoView({block:'center'}); } },80);
@@ -1911,8 +2042,16 @@ function wire(){
 }
 
 /* ───── 미리보기용 가짜 자료 ───── */
+/* 미리보기(가짜 자료)에서도 방금 누른 것이 화면에 남도록 잠깐 기억해 둡니다 */
+var MOCKX = { groups:[], gone:[], records:[] };
 function MOCK(action,p){
   if (action==='login') return { token:'preview' };
+  if (action==='addGroup'){ MOCKX.groups.push(String(p.name));
+    MOCKX.gone = MOCKX.gone.filter(function(g){ return g!==String(p.name); }); return { ok:true }; }
+  if (action==='delGroup'){ MOCKX.gone.push(String(p.name));
+    MOCKX.groups = MOCKX.groups.filter(function(g){ return g!==String(p.name); }); return { ok:true }; }
+  if (action==='addRecord'){ MOCKX.records.push({ row:0, date:String(p.date||''), event:String(p.event||''),
+    subject:String(p.subject||'창체'), text:String(p.text||''), pending:true }); return { ok:true }; }
   if (action==='school'){
     if (String(p&&p.code)!=='2606') throw new Error('코드가 맞지 않습니다.');
     return { title:'2026 학교 업무 효율화 자료(미리보기)', url:'https://docs.google.com', tabs:[
@@ -1925,7 +2064,7 @@ function MOCK(action,p){
   var PERIODS=[['1교시',540,580],['2교시',590,630],['3교시',640,680],['4교시',690,730],['점심',730,780],['5교시',790,830],['6교시',840,880]].map(function(x){ return {name:x[0],s:x[1],e:x[2]}; });
   function tt(seed){ var t={}; days.forEach(function(d,di){ t[d]=[]; for(var i=0;i<6;i++) t[d].push(subs[(seed+di*3+i*5)%subs.length]); }); return t; }
   function dz(o){ var x=new Date(); x.setDate(x.getDate()+o); return ymd(x); }
-  return {
+  var D = {
     title:'6학년 운영 데스크', grade:6, year:2026, needCode:false, hasSchool:true, sheetUrl:'https://docs.google.com', updated:new Date().toISOString(),
     classes:['1','2','3','4'], teachers:{'1':'김은서','2':'박교사','3':'이교사','4':'정교사'},
     timetable:{ classes:{'6-1':tt(0),'6-2':tt(2),'6-3':tt(4),'6-4':tt(6)}, periods:PERIODS },
@@ -1964,14 +2103,30 @@ function MOCK(action,p){
     students:[['김도형','1반','1'],['나성환','1반','2'],['박시율','2반','1'],['정하람','3반','5'],['최윤서','4반','9']]
       .map(function(x){ return {name:x[0],cls:x[1],no:x[2]}; }),
     support:[{name:'박시율',cls:'6-2',tags:['국어','수학','기초학습 지원'],note:'진단검사'}],
-    evaluation:[{subject:'국어',rows:[{when:'4월 (1회)',unit:'2. 바르게 고쳐 써요',area:'쓰기',what:'소개하는 글 쓰고 공유하기',how:'서술·논술형 평가'}]},
-      {subject:'수학',rows:[{when:'4월 (1회)',unit:'1. 분수의 나눗셈',area:'수와 연산',what:'분수의 나눗셈 해결하기',how:'지필 평가'}]}],
-    records:[{date:'4/14',event:'교통안전교육',subject:'창체',text:'가상현실 체험으로 교통안전 수칙을 익힘.'},
-      {date:'4/14',event:'교통안전교육',subject:'창체',text:'체험에 적극 참여하고 규칙 준수를 다짐함.'},
-      {date:'5/2',event:'학교폭력예방교육',subject:'창체',text:'역할극으로 갈등 해결 방법을 익힘.'}],
+    evaluation:[
+      { term:'1학기', tab:'1학기 평가 계획', subjects:[
+        {subject:'국어',rows:[
+          {when:'4월 (1회)',unit:'2. 바르게 고쳐 써요',area:'쓰기',what:'소개하는 글 쓰고 공유하기',how:'서술·논술형 평가'},
+          {when:'5월 (1회)',unit:'4. 주장과 근거',area:'읽기',what:'주장하는 글 읽고 근거 판단하기',how:'관찰 평가'}]},
+        {subject:'수학',rows:[
+          {when:'4월 (1회)',unit:'1. 분수의 나눗셈',area:'수와 연산',what:'분수의 나눗셈 해결하기',how:'지필 평가'},
+          {when:'6월 (1회)',unit:'3. 각기둥과 각뿔',area:'도형',what:'각기둥의 구성 요소 알기',how:'지필 평가'}]}]},
+      { term:'2학기', tab:'2학기 평가 계획', subjects:[
+        {subject:'국어',rows:[
+          {when:'9월 (1회)',unit:'1. 작품 속 인물과 나',area:'문학',what:'인물의 삶 살펴보기',how:'서술형 평가'}]},
+        {subject:'사회',rows:[
+          {when:'10월 (1회)',unit:'1. 세계의 여러 나라',area:'지리 인식',what:'지도에서 나라 찾기',how:'관찰 평가'}]}]}],
+    records:[{row:4,date:'4/14',event:'교통안전교육',subject:'창체',text:'가상현실 체험으로 교통안전 수칙을 익힘.'},
+      {row:5,date:'4/14',event:'교통안전교육',subject:'창체',text:'체험에 적극 참여하고 규칙 준수를 다짐함.'},
+      {row:6,date:'5/2',event:'학교폭력예방교육',subject:'창체',text:'역할극으로 갈등 해결 방법을 익힘.'}],
+    tabs:{ records:'누가기록' },
     links:[{label:'학교 업무 효율화 자료',url:'https://docs.google.com'},{label:'학급 교육과정 제출 폴더',url:'https://drive.google.com'}],
     raw:{ '편제 시수':[[1,['구분','기준시수','편성시수']],[2,['국어','408','408']]] }
   };
+  MOCKX.groups.forEach(function(g){ if(D.supplies.groups.indexOf(g)<0) D.supplies.groups.push(g); });
+  D.supplies.groups = D.supplies.groups.filter(function(g){ return MOCKX.gone.indexOf(g)<0; });
+  D.records = D.records.concat(MOCKX.records);
+  return D;
 }
 
 /* ───── 시작 ───── */
