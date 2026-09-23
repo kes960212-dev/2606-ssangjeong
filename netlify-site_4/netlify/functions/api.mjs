@@ -168,7 +168,8 @@ async function preview(st, a, p, pending) {
       d.events = (d.events || []).concat([{ date: String(p.date || ''), text: String(p.text || ''), who, important: !!p.important, pending: true }])
         .sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     } else if (a === 'addMemo') {
-      d.memos = [{ row: 0, at: now, who, text: String(p.text || ''), color: String(p.color || ''), pending: true }].concat(d.memos || []);
+      const kind = ['공지', '부장회의', '메모'].includes(String(p.kind)) ? String(p.kind) : '메모';
+      d.memos = [{ row: 0, at: now, who, text: String(p.text || ''), color: String(p.color || ''), kind, pending: true }].concat(d.memos || []);
     } else if (a === 'addSupply') {
       if (!d.supplies) d.supplies = { head: [], rows: [], groups: [] };
       const g = String(p.group || '기타');
