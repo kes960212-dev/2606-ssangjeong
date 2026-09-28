@@ -60,9 +60,12 @@ export default async () => {
   for (const s of subs) {
     const body = lines(s.cls, { soon, late, starToday, today });
     if (!body) continue;                                   // 그 선생님과 상관없는 날은 건너뜀
+    // 앱 아이콘에 띄울 숫자 — 그 선생님 반이 아직 안 낸 수합 건수
+    const mine = (it) => !s.cls || missing(it).indexOf(String(s.cls)) >= 0;
+    const count = soon.filter(mine).length + late.filter(mine).length;
     const payload = JSON.stringify({
       title: (data.grade || 6) + '학년 수합 알림',
-      body, tag: 'g6-due-' + today, url: '/'
+      body, tag: 'g6-due-' + today, url: '/', count
     });
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 8 * 3600 });
