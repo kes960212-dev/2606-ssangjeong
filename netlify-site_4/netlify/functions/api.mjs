@@ -169,7 +169,8 @@ async function preview(st, a, p, pending) {
         .sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
     } else if (a === 'addMemo') {
       const kind = ['공지', '부장회의', '메모'].includes(String(p.kind)) ? String(p.kind) : '메모';
-      d.memos = [{ row: 0, at: now, who, text: String(p.text || ''), color: String(p.color || ''), kind, pending: true }].concat(d.memos || []);
+      const when = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(String(p.when || '')) ? String(p.when) : '';
+      d.memos = [{ row: 0, at: now, who, text: String(p.text || ''), color: String(p.color || ''), kind, when, pending: true }].concat(d.memos || []);
     } else if (a === 'addSupply') {
       if (!d.supplies) d.supplies = { head: [], rows: [], groups: [] };
       const g = String(p.group || '기타');
