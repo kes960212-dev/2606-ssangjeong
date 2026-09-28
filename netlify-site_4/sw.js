@@ -1,6 +1,6 @@
 // 6학년 운영 데스크 — 서비스 워커
 // 하는 일: ① 홈 화면 앱으로 설치되게 하고 ② 마감 알림을 받아 띄웁니다.
-const CACHE = 'g6-v3';
+const CACHE = 'g6-v4';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {
@@ -32,10 +32,26 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
+// 앱 아이콘 위의 숫자 (미제출 건수). 지원하지 않는 기기에서는 조용히 넘어갑니다.
+function setBadge(n) {
+  try {
+    if (n > 0 && self.navigator && self.navigator.setAppBadge) return self.navigator.setAppBadge(n);
+    if (self.navigator && self.navigator.clearAppBadge) return self.navigator.clearAppBadge();
+  } catch (err) {}
+  return Promise.resolve();
+}
+
+// 앱이 열려 있을 때는 화면 쪽에서 숫자를 알려 줍니다
+self.addEventListener('message', (e) => {
+  const m = e.data || {};
+  if (m.type === 'badge') e.waitUntil(setBadge(Number(m.count) || 0));
+});
+
 self.addEventListener('push', (e) => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
   const title = d.title || '6학년 운영 데스크';
+  if (typeof d.count === 'number') e.waitUntil(setBadge(d.count));
   e.waitUntil(self.registration.showNotification(title, {
     body: d.body || '',
     icon: '/icon-192.png',
