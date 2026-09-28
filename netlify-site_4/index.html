@@ -193,6 +193,7 @@ main{max-width:1240px;margin:0 auto;padding:16px 20px 56px}
 .chip.on{background:color-mix(in srgb, var(--c) 55%, var(--paper));transform:rotate(-2deg) scale(1.05)}
 .chip.red{--c:var(--pen-red)} .chip.blue{--c:var(--pen-blue)} .chip.green{--c:var(--pen-green)} .chip.amber{--c:var(--pen-amber)}
 .chip.sm{padding:2px 9px 3px;font-size:.75rem}
+h4.subt{margin:0 0 6px;font-family:var(--pen);font-size:1rem}
 
 /* 평가 — 과목별 영역 횟수 */
 .evsum{display:grid;gap:2px}
@@ -291,6 +292,18 @@ ul.notice li{position:relative;display:flex;gap:10px;align-items:baseline;flex-w
 ul.notice li:last-child{border-bottom:none}
 ul.notice li::before{content:"●";position:absolute;left:0;top:9px;font-size:.5rem;color:var(--pen-amber)}
 ul.notice li .t{font-family:var(--hand);font-size:0.94rem;flex:1 1 60%;white-space:pre-wrap;word-break:break-word}
+ul.notice li .at{font-family:var(--ui);font-size:.72rem;font-weight:700;white-space:nowrap;
+  padding:2px 8px 3px;border-radius:999px;background:rgba(61,98,179,.14);color:var(--pen-blue)}
+ul.notice li .at.soon{background:rgba(217,71,79,.16);color:var(--pen-red)}
+ul.notice li .at.past{background:rgba(120,105,80,.1);color:var(--ink-soft)}
+ul.notice li .at.past+.t{color:var(--ink-soft)}
+
+/* 공지에 붙는 날짜·시각 */
+.whenline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:-2px 0 12px}
+.whenline label{flex-basis:100%;font-family:var(--ui);font-size:.7rem;letter-spacing:.04em;color:var(--ink-soft)}
+.whenline input{font-family:var(--hand);font-size:0.86rem;color:var(--pen-blue);background:transparent;
+  border:none;border-bottom:1.5px dashed var(--rule-strong);padding:4px 2px}
+.whenline input:focus{outline:none;border-bottom-color:var(--ink);border-bottom-style:solid}
 ul.notice li .who{font-family:var(--ui);font-size:.72rem;color:var(--ink-soft);white-space:nowrap}
 ul.notice li.pending{opacity:.7}
 ul.notice li .x{position:absolute;top:6px;right:2px;border:none;background:transparent;
@@ -474,7 +487,7 @@ function act(action, payload, okMsg){
   S.busy = true; setStatus('저장 중…');
   payload = payload || {}; payload.who = myName();
   return call(action, payload).then(function(){
-    return call('data').then(function(d){ S.d = d; go(S.page, true); setStatus('저장됨'); if (okMsg) toast(okMsg); });
+    return call('data').then(function(d){ S.d = d; go(S.page, true); setStatus('저장됨'); setBadge(); if (okMsg) toast(okMsg); });
   }).catch(function(e){ setStatus(''); toast(e.message || '저장하지 못했어요.'); throw e; })
   .then(function(){ S.busy = false; }, function(){ S.busy = false; });
 }
@@ -520,7 +533,7 @@ function apply(d){
   $('logoutBtn').classList.toggle('hidden', !d.needCode);
   document.title = d.title || document.title;
   setStatus('');
-  renderTabs(); go(S.page, true);
+  renderTabs(); go(S.page, true); setBadge();
   if (!S.timers.length){
     S.timers.push(setInterval(function(){ if (S.page==='today') tickClock(); }, 1000));
     S.timers.push(setInterval(function(){ if (!document.hidden && !S.busy) refresh(); }, 120000));
@@ -530,7 +543,7 @@ function refresh(){
   call('data').then(function(d){
     var changed = JSON.stringify(d)!==JSON.stringify(S.d);
     S.d=d; try{ box().setItem('g6_data', JSON.stringify(d)); }catch(e){}
-    setStatus('');
+    setStatus(''); setBadge();
     if (changed) go(S.page, true);
   }).catch(function(){});
 }
@@ -557,6 +570,32 @@ function go(page, quiet){
 function items(){ return (S.d.checklist && S.d.checklist.rows) || []; }
 function missing(it){ return Object.keys(it.cls).filter(function(k){ return !it.cls[k]; }).sort(); }
 function lateCount(){ return items().filter(function(it){ return it.due && it.due<today() && missing(it).length; }).length; }
+
+/* ───── 앱 아이콘 위의 숫자(배지) ─────
+   내 반이 아직 안 낸 수합 가운데 「마감 지난 것 + 일주일 안에 마감인 것」을 셉니다.
+   반을 안 고르셨으면 학년 전체 기준. 지원하지 않는 기기에서는 조용히 넘어갑니다. */
+function badgeCount(){
+  if (!S.d || !S.d.checklist) return 0;
+  var t=today(), wk=ymd(new Date(Date.now()+7*864e5));
+  return items().filter(function(it){
+    var m=missing(it);
+    if (!m.length) return false;
+    if (S.myCls && m.indexOf(String(S.myCls))<0) return false;
+    return it.due && it.due<=wk;          // 마감 지난 것 + 일주일 안
+  }).length;
+}
+function setBadge(){
+  var n=badgeCount();
+  try {
+    if (navigator.setAppBadge){ n>0 ? navigator.setAppBadge(n) : navigator.clearAppBadge(); }
+  } catch(e){}
+  // 앱이 닫힌 뒤에도 숫자가 남도록 서비스 워커에도 알려 둡니다
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller)
+      navigator.serviceWorker.controller.postMessage({ type:'badge', count:n });
+  } catch(e){}
+  return n;
+}
 function dueInfo(it){
   if (!missing(it).length) return { t:'완료', c:'ok' };
   if (!it.due) return { t:'마감 없음', c:'' };
@@ -631,11 +670,12 @@ function pToday(){
     '</div></div>';
 
   // 학년 공지 — 첫 화면에서 바로 올리고 바로 봅니다
-  var notices=memosOf('공지');
+  var notices=sortNotices(memosOf('공지'));
   h += '<div class="sheet"><div class="tape"></div><h3 class="title"><span class="mark">학년 공지</span>'+
     '<span class="more">'+(notices.length? notices.length+'건' : '올릴 공지가 있으면 여기에 적어 주세요')+'</span></h3>'+
     '<div class="addline"><input id="ntText" placeholder="예) 금요일 학년 협의회 자료는 목요일까지 부탁드려요">'+
       '<button type="button" class="btn sm" id="ntAdd">＋ 공지 올리기</button></div>'+
+    whenLine('nt')+
     (notices.length ? '<ul class="notice">'+notices.slice(0,6).map(noticeRow).join('')+'</ul>'
                     : '<div class="empty">아직 올라온 공지가 없어요.</div>')+
     (notices.length>6 ? '<div style="margin-top:10px"><button type="button" class="btn line sm" data-go="memo">공지 전체 보기</button></div>' : '')+
@@ -661,7 +701,7 @@ function pToday(){
     '</div></div>';
   h += '</div>';
 
-  var heads=memosOf('부장회의');
+  var heads=sortNotices(memosOf('부장회의'));
   if (heads.length){
     h += '<div class="sheet plain"><h3 class="title"><span class="mark">부장회의 결과</span>'+
       '<span class="more">최근 '+Math.min(heads.length,4)+'건</span></h3>'+
@@ -689,11 +729,52 @@ function addNotice(){
   var text=t.value.trim();
   if (!text) return toast('공지 내용을 적어 주세요.');
   if (!needName()) return;
-  act('addMemo', { text:text, color:'', kind:'공지' }, '공지를 올렸어요.');
+  act('addMemo', { text:text, color:'', kind:'공지', when:whenValue('nt') },
+      whenValue('nt') ? '공지를 올렸어요. 1시간 전에 알려 드릴게요.' : '공지를 올렸어요.');
 }
+
+/* ───── 공지에 붙는 일정 시각 ─────
+   날짜·시각을 적어 두면 그 시각 1시간 전에 휴대폰 알림이 한 번 갑니다. */
+function whenLine(id){
+  return '<div class="whenline">'+
+    '<label for="'+id+'Date">언제 있는 일인가요 <span class="muted">(비워 두면 알림 없이 올라가요)</span></label>'+
+    '<input type="date" id="'+id+'Date">'+
+    '<input type="time" id="'+id+'Time" step="300" value="09:00">'+
+    '<span class="muted small" id="'+id+'Hint">적어 두면 <b>1시간 전</b>에 알림이 가요</span>'+
+    '</div>';
+}
+function whenValue(id){
+  var d=$(id+'Date'), t=$(id+'Time');
+  if (!d || !d.value) return '';
+  return d.value + ' ' + ((t && t.value) ? t.value.slice(0,5) : '09:00');
+}
+function whenLabel(w){
+  var m=String(w||'').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+  if (!m) return '';
+  var dt=new Date(m[1]+'-'+m[2]+'-'+m[3]+'T00:00:00');
+  return Number(m[2])+'/'+Number(m[3])+'('+WD[dt.getDay()]+') '+m[4]+':'+m[5];
+}
+function whenState(w){                     // 'soon' | 'later' | 'past' | ''
+  var m=String(w||'').match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+  if (!m) return '';
+  var t=new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5]).getTime(), n=Date.now();
+  if (t < n) return 'past';
+  return (t - n <= 24*3600e3) ? 'soon' : 'later';
+}
+/* 앞으로 있을 일정을 위로, 시각이 이른 것부터. 나머지는 적은 순서대로 */
+function sortNotices(list){
+  var up=[], rest=[];
+  list.forEach(function(m){ (whenState(m.when)==='past'||!m.when) ? rest.push(m) : up.push(m); });
+  up.sort(function(a,b){ return a.when<b.when?-1:(a.when>b.when?1:0); });
+  return up.concat(rest);
+}
+
 /* 공지·부장회의는 쪽지보다 목록이 읽기 편해서 줄로 보여 줍니다 */
 function noticeRow(m){
-  return '<li'+(m.pending?' class="pending"':'')+'><span class="t">'+esc(m.text)+'</span>'+
+  var st=whenState(m.when);
+  return '<li'+(m.pending?' class="pending"':'')+'>'+
+    (m.when ? '<span class="at '+st+'">'+esc(whenLabel(m.when))+'</span>' : '')+
+    '<span class="t">'+esc(m.text)+'</span>'+
     '<span class="who">'+esc(m.who||'')+' · '+esc((m.at||'').slice(5,10))+'</span>'+
     (m.row ? '<button type="button" class="x" data-delmemo="'+m.row+'" title="내리기">✕</button>'
            : '<span class="saving">저장 중</span>')+'</li>';
@@ -1160,7 +1241,8 @@ function pStu(){
     return (s.name+s.cls+s.no).indexOf(q)>=0;
   });
   var set=[]; stu.forEach(function(s){ if (s.cls && set.indexOf(s.cls)<0) set.push(s.cls); }); set.sort();
-  var h='<div class="sheet"><h3 class="title"><span class="mark">학생 찾기</span><span class="more">'+list.length+'명</span></h3>'+
+  var h='<div class="sheet"><h3 class="title"><span class="mark">학생 찾기</span>'+
+    '<span class="more">'+list.length+'명'+(S.d.rosterTab?' · 학생명부에서':'')+'</span></h3>'+
     '<div class="chips"><button type="button" class="chip '+(!cls?'on':'')+'" data-cls="">전체</button>'+
     set.map(function(c){ return '<button type="button" class="chip '+(cls===c?'on':'')+'" data-cls="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+
     '<button type="button" class="chip blue" data-copy="roster">명렬 복사</button></div><hr class="rule">'+
@@ -1212,13 +1294,17 @@ function pMemo(){
         ? '예) 10월 학예회는 11/7(금) 5~6교시, 학년별 20분씩'
         : (S.memoKind==='공지' ? '예) 금요일 학년 협의회 자료는 목요일까지 부탁드려요'
                                : '예) 6-3 교실 프로젝터 수리 완료'))+'"></textarea></div></div>'+
+    whenLine('mo')+
     '<div class="chips" style="margin-top:10px">'+
       ['','pink','mint','blue'].map(function(c,i){
         return '<button type="button" class="chip mocolor '+(i===0?'on':'')+'" data-color="'+c+'">'+['노랑','분홍','민트','파랑'][i]+'</button>'; }).join('')+
       '<button type="button" class="btn sm" id="moAdd">＋ '+esc(cur.label)+' 붙이기</button></div>'+
     '<hr class="rule">'+
-    (list.length?'<div class="notes">'+list.map(noteCard).join('')+'</div>'
-               :'<div class="empty">아직 '+esc(cur.label)+'이(가) 없어요.</div>')+
+    (list.length
+      ? (S.memoKind==='메모'
+          ? '<div class="notes">'+list.map(noteCard).join('')+'</div>'
+          : '<ul class="notice">'+sortNotices(list).map(noticeRow).join('')+'</ul>')
+      : '<div class="empty">아직 '+esc(cur.label)+'이(가) 없어요.</div>')+
     '</div>';
   $('view').innerHTML=h;
   each($('view').querySelectorAll('[data-mk]'), function(b){
@@ -1232,7 +1318,9 @@ function pMemo(){
     var text=$('moText').value.trim();
     if (!text) return toast('내용을 적어 주세요.');
     if (!needName()) return;
-    act('addMemo', { text:text, color:color, kind:S.memoKind }, esc(cur.label)+'을(를) 붙였어요.');
+    var w=whenValue('mo');
+    act('addMemo', { text:text, color:color, kind:S.memoKind, when:w },
+        w ? cur.label+'을(를) 붙였어요. 1시간 전에 알려 드릴게요.' : cur.label+'을(를) 붙였어요.');
   };
   wire();
 }
@@ -1773,7 +1861,8 @@ function pApp(){
   h+='<div class="sheet" id="pushCard"><h3 class="title"><span class="mark">마감 알림</span>'+
     '<span class="more">평일 아침 7시 30분</span></h3>'+
     '<p class="lead">오늘·내일 마감인데 아직 안 낸 수합과, 마감이 지난 것을 휴대폰으로 알려 줘요. '+
-    '반을 고르면 <b>그 반이 안 낸 것만</b> 보냅니다.</p>'+
+    '반을 고르면 <b>그 반이 안 낸 것만</b> 보냅니다.<br>'+
+    '공지에 날짜·시각을 적어 두면 <b>그 시각 1시간 전에도</b> 한 번 알림이 가요 (반과 상관없이 모두에게).</p>'+
     '<div class="chips" style="margin-top:10px" id="clsPick">'+
       '<span class="small muted" style="align-self:center">내 반</span>'+
       ['','1','2','3','4'].map(function(c){
@@ -1783,7 +1872,16 @@ function pApp(){
       '<button type="button" class="btn sm" id="pushOn">알림 켜기</button>'+
       '<button type="button" class="chip" id="pushOff">끄기</button>'+
       '<span id="pushMsg" class="small muted" style="align-self:center"></span>'+
-    '</div></div>';
+    '</div>'+
+    '<hr class="rule">'+
+    '<h4 class="subt">아이콘 위 숫자</h4>'+
+    '<p class="lead">홈 화면 아이콘 위에 <b>아직 안 낸 수합 건수</b>가 빨간 숫자로 뜹니다. '+
+    '열어 보지 않아도 남은 게 있는지 한눈에 보여요. 마감이 지났거나 일주일 안에 마감인 것만 셉니다.</p>'+
+    '<div class="chips" style="margin-top:10px"><span id="badgeLine" class="small muted"></span></div>'+
+    '<p class="small muted" style="margin-top:8px">'+
+    '아이폰은 <b>홈 화면 아이콘으로 열고 알림을 켠 뒤</b>에 숫자가 보입니다(iOS 16.4 이상). '+
+    '안드로이드 크롬은 앱으로 설치하면 바로 돼요. 숫자를 지우려면 수합을 다 내거나 알림을 끄시면 됩니다.</p>'+
+    '</div>';
 
   $('view').innerHTML=h;
   if ($('doInstall')) $('doInstall').onclick=function(){
@@ -1794,8 +1892,10 @@ function pApp(){
   each($('view').querySelectorAll('[data-mycls]'), function(b){ b.onclick=function(){
     S.myCls=b.dataset.mycls; lsSet('g6_cls', S.myCls);
     each($('view').querySelectorAll('[data-mycls]'), function(x){ x.classList.toggle('on', x===b); });
+    showBadgeLine();
     pushState().then(function(st){ if (st==='on') turnOnPush(S.myCls).then(function(){ toast('알림 받을 반을 바꿨어요.'); }); });
   }; });
+  showBadgeLine();
   $('pushOn').onclick=function(){
     setMsg('준비 중…');
     turnOnPush(S.myCls).then(function(){ setMsg(''); toast('알림을 켰어요.'); showPush(); })
@@ -1808,6 +1908,14 @@ function pApp(){
   wire();
 }
 function setMsg(t){ if ($('pushMsg')) $('pushMsg').textContent=t; }
+function showBadgeLine(){
+  var el=$('badgeLine'); if (!el) return;
+  var n=setBadge();
+  var can = !!(navigator.setAppBadge);
+  el.textContent = can
+    ? '지금 ' + (S.myCls ? S.myCls+'반' : '학년 전체') + ' 기준 ' + n + '건' + (n?' — 아이콘에 '+n+' 이 뜹니다.':' — 지금은 숫자가 없어요.')
+    : '이 기기(또는 브라우저)에서는 아이콘 숫자를 지원하지 않아요. 홈 화면 아이콘으로 열면 보이는 경우가 많습니다.';
+}
 function showPush(){
   if (!$('pushMsg')) return;
   if (MODE==='preview'){ setMsg('미리보기에서는 알림을 켤 수 없어요.'); return; }
@@ -2200,7 +2308,7 @@ function wire(){
 
 /* ───── 미리보기용 가짜 자료 ───── */
 /* 미리보기(가짜 자료)에서도 방금 누른 것이 화면에 남도록 잠깐 기억해 둡니다 */
-var MOCKX = { groups:[], gone:[], records:[], memos:[], supplies:[] };
+var MOCKX = { groups:[], gone:[], records:[], memos:[], supplies:[], checks:{} };
 function MOCK(action,p){
   if (action==='login') return { token:'preview' };
   if (action==='addGroup'){ MOCKX.groups.push(String(p.name));
@@ -2209,9 +2317,11 @@ function MOCK(action,p){
     MOCKX.groups = MOCKX.groups.filter(function(g){ return g!==String(p.name); }); return { ok:true }; }
   if (action==='addRecord'){ MOCKX.records.push({ row:0, date:String(p.date||''), event:String(p.event||''),
     subject:String(p.subject||'창체'), text:String(p.text||''), pending:true }); return { ok:true }; }
+  if (action==='check'){ var k=String(p.row);
+    (MOCKX.checks[k]=MOCKX.checks[k]||{})[String(p.cls)]=!!p.value; return { ok:true }; }
   if (action==='addMemo'){ MOCKX.memos.unshift({ row:0, at:new Date().toISOString().slice(0,10),
     who:String(p.who||''), text:String(p.text||''), color:String(p.color||''),
-    kind:String(p.kind||'메모'), pending:true }); return { ok:true }; }
+    kind:String(p.kind||'메모'), when:String(p.when||''), pending:true }); return { ok:true }; }
   if (action==='addSupply'){ MOCKX.supplies.push({ row:0, group:String(p.group||'기타'),
     at:new Date().toISOString().slice(0,10), who:String(p.who||''), cls:String(p.cls||''),
     name:String(p.name||''), spec:String(p.spec||''), qty:String(p.qty||''), unit:String(p.unit||''),
@@ -2254,7 +2364,8 @@ function MOCK(action,p){
       { row:21, name:'학생명부', due:'', cls:{'1':true,'2':true,'3':true,'4':true}, link:'' }
     ]},
     events:[{row:3,date:dz(0),text:'학년 협의회 15:00 (6-1 교실)',own:true,important:true,who:'김은서'},{row:4,date:dz(2),text:'현장체험학습 사전답사',own:true,who:'박교사'},{row:5,date:dz(3),text:'수행평가(사회) 실시',own:true,important:true,who:'김은서'},{row:6,date:dz(-2),text:'학부모 상담 주간 시작',own:true,who:'이교사'},{row:7,date:dz(5),text:'독서골든벨',own:true,who:'정교사'},{date:dz(9),text:'학예회 준비 주간'},{date:dz(1),text:'찾아가는 정보통신윤리교육(시청각실, 1~2교시, 6학년 전체)',who:'최영훈',src:'학사일정'},{date:dz(4),text:'직원 협의회(시청각실, 15:00~)',who:'최영훈',src:'학사일정'}],
-    memos:[{row:2,at:dz(0),who:'김은서',text:'10/2(금) 학년 협의회 자료는 목요일까지 공유 부탁드려요.',color:'',kind:'공지'},
+    memos:[{row:2,at:dz(0),who:'김은서',text:'학년 협의회 — 6-1 교실에서 뵈어요.',color:'',kind:'공지',when:dz(1)+' 15:00'},
+      {row:6,at:dz(0),who:'김은서',text:'2학기 학부모 공개수업, 3교시입니다.',color:'',kind:'공지',when:dz(6)+' 11:40'},
       {row:3,at:dz(-1),who:'박교사',text:'체험학습 버스 2대 예약 완료!',color:'mint',kind:'메모'},
       {row:4,at:dz(-2),who:'김은서',text:'학예회 일정 11/7(금) 5~6교시로 확정, 학년별 20분씩.',color:'',kind:'부장회의'},
       {row:5,at:dz(-3),who:'김은서',text:'졸업앨범 촬영은 10월 셋째 주, 학급별 시간은 추후 안내.',color:'',kind:'부장회의'}],
@@ -2267,8 +2378,12 @@ function MOCK(action,p){
         {row:4,group:'행사물품',at:dz(-1),who:'정교사',name:'현수막',spec:'3m',qty:'1',unit:'80000',price:'80000',use:'학예회',status:'구입중',note:'9/30까지'},
         {row:5,group:'교실비품',at:dz(-8),who:'이교사',name:'자석 칠판지우개',spec:'',qty:'4',unit:'3000',price:'12000',use:'각 교실',status:'완료',note:''}
       ] },
-    students:[['김도형','1반','1'],['나성환','1반','2'],['박시율','2반','1'],['정하람','3반','5'],['최윤서','4반','9']]
+    students:[['김도형','1반','1'],['김소율','1반','2'],['나성환','1반','3'],
+              ['강성빈','2반','1'],['박시율','2반','2'],
+              ['강송준','3반','1'],['정하람','3반','2'],
+              ['강준우','4반','1'],['최윤서','4반','2']]
       .map(function(x){ return {name:x[0],cls:x[1],no:x[2]}; }),
+    rosterTab:'6-1, 6-2, 6-3, 6-4',
     support:[{name:'박시율',cls:'6-2',tags:['국어','수학','기초학습 지원'],note:'진단검사'}],
     evaluation:[
       { term:'1학기', tab:'1학기 평가 계획', subjects:[
@@ -2302,6 +2417,10 @@ function MOCK(action,p){
   D.supplies.rows = D.supplies.rows.concat(MOCKX.supplies);
   D.records = D.records.concat(MOCKX.records);
   D.memos = MOCKX.memos.concat(D.memos);
+  D.checklist.rows.forEach(function(it){
+    var c=MOCKX.checks[String(it.row)];
+    if (c) Object.keys(c).forEach(function(k){ it.cls[k]=c[k]; });
+  });
   return D;
 }
 
