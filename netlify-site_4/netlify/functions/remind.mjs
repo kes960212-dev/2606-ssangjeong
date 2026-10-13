@@ -1,5 +1,5 @@
-// 6학년 운영 데스크 — 마감 알림 (매일 아침 자동 실행)
-// 오늘/내일 마감인 수합 중 아직 미제출인 것과, 마감이 지난 미제출을 휴대폰으로 알려 줍니다.
+// 6학년 운영 데스크 — 아침 알림 (매일 자동 실행)
+// 오늘 내 반 전담 시간 + 오늘/내일 마감인 미제출 수합 + 마감 지난 미제출을 휴대폰으로 알려 줍니다.
 // 환경변수: VAPID_PUBLIC, VAPID_PRIVATE, (선택) VAPID_MAILTO, REMIND_DAYS
 import { getStore } from '@netlify/blobs';
 import webpush from 'web-push';
@@ -14,6 +14,31 @@ function seoulToday(offsetDays = 0) {
 }
 const missing = (it) => Object.keys(it.cls || {}).filter((k) => !it.cls[k]).sort();
 const clean = (s) => String(s || '').replace(/\s*\([^)]*까지\)\s*/, '').trim();
+
+/* ───── 전담 ───── */
+
+/** 그 날의 전담 배치 (없으면 null — 주말·방학 등 배치표에 없는 날) */
+const specOf = (data, ds) => (data.specialist && data.specialist.days && data.specialist.days[ds]) || null;
+
+/** 교시 목록 (급식 등은 빼고 'n교시'만) */
+const specPeriods = (data) =>
+  ((data.specialist && data.specialist.periods) || []).filter((p) => /교시/.test(p.name));
+
+/**
+ * 그 선생님 반의 오늘 전담을 한 줄로.
+ *   '2교시 과학 · 3교시 과학'  /  '전담 없음'  /  ''(반을 안 골랐거나 배치표에 없는 날)
+ */
+function specSummary(data, cls, ds) {
+  if (!cls) return '';
+  const day = specOf(data, ds);
+  if (!day) return '';
+  const out = [];
+  for (const p of specPeriods(data)) {
+    const v = (day.slots || {})[p.name] && (day.slots || {})[p.name][String(cls)];
+    if (v) out.push(p.name + ' ' + v);
+  }
+  return out.length ? out.join(' · ') : '전담 없음';
+}
 
 export default async () => {
   const st = store();
@@ -33,8 +58,10 @@ export default async () => {
   const late = rows.filter((it) => it.due && it.due < today && missing(it).length);
   const todayEvents = (data.events || []).filter((e) => e.date === today);
   const starToday = todayEvents.filter((e) => e.important);
+  const specDay = specOf(data, today);          // 오늘이 등교일(전담 배치표에 있는 날)인지
 
-  if (!soon.length && !late.length && !starToday.length) {
+  // 전담 배치가 있는 날이면 알릴 내용이 늘 있습니다(전담 없음도 알려 줄 가치가 있음).
+  if (!specDay && !soon.length && !late.length && !starToday.length) {
     await st.setJSON('remind/last', { date: today, sent: 0, note: '알릴 내용 없음' });
     return new Response('알릴 내용이 없습니다.', { status: 200 });
   }
@@ -56,16 +83,24 @@ export default async () => {
     return new Response('알림을 켠 사람이 없습니다.', { status: 200 });
   }
 
+  const grade = data.grade || 6;
   let sent = 0, gone = 0;
   for (const s of subs) {
-    const body = lines(s.cls, { soon, late, starToday, today });
-    if (!body) continue;                                   // 그 선생님과 상관없는 날은 건너뜀
+    const spec = specSummary(data, s.cls, today);           // 내 반 오늘 전담
+    let body = lines(s.cls, { soon, late, starToday, today, specDay });
+    if (!body && !spec) continue;                            // 그 선생님과 상관없는 날은 건너뜀
+    if (!body) body = '마감이 가까운 수합은 없어요.';
+
+    // 제목에 전담을 올려 두면 잠금화면에서 열지 않고도 보입니다.
+    const title = spec
+      ? grade + '-' + s.cls + ' · ' + spec
+      : grade + '학년 수합 알림';
+
     // 앱 아이콘에 띄울 숫자 — 그 선생님 반이 아직 안 낸 수합 건수
     const mine = (it) => !s.cls || missing(it).indexOf(String(s.cls)) >= 0;
     const count = soon.filter(mine).length + late.filter(mine).length;
     const payload = JSON.stringify({
-      title: (data.grade || 6) + '학년 수합 알림',
-      body, tag: 'g6-due-' + today, url: '/', count
+      title, body, tag: 'g6-due-' + today, url: '/', count
     });
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 8 * 3600 });
@@ -84,6 +119,12 @@ export default async () => {
 function lines(cls, x) {
   const out = [];
   const mine = (it) => !cls || missing(it).indexOf(String(cls)) >= 0;
+
+  // 전담 배치표에 적힌 그 날의 메모 (예: '3교시 - 민방위훈련')
+  ((x.specDay && x.specDay.notes) || []).slice(0, 2).forEach((n) => {
+    const t = String(n || '').trim();
+    if (t) out.push('· ' + t.slice(0, 40));
+  });
 
   const late = x.late.filter(mine);
   if (late.length) {
