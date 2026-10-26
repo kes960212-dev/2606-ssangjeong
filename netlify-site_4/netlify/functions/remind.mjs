@@ -26,13 +26,12 @@ const specPeriods = (data) =>
   ((data.specialist && data.specialist.periods) || []).filter((p) => /^\d+교시/.test(p.name));
 
 /**
- * 구독에 반이 비어 있어도 이름으로 찾아 줍니다.
- * (앱·알림에서 반을 고르지 않은 선생님이 많아 cls 가 '' 로 저장돼 있습니다)
+ * 이름으로 담임 반을 찾습니다.
+ * 앱·알림에서 반을 "전체"로 두신 분도 제목에는 본인 반 전담이 뜨도록 쓰는 것이고,
+ * 수합 범위는 본인이 고른 설정(전체면 전체)을 그대로 따릅니다.
  */
-function clsOf(data, sub) {
-  const c = String(sub.cls || '').trim();
-  if (c) return c;
-  const who = norm(sub.who);
+function nameCls(data, whoRaw) {
+  const who = norm(whoRaw);
   if (!who) return '';
   const t = data.teachers || {};
   for (const k of Object.keys(t)) if (norm(t[k]) === who) return k;
@@ -96,36 +95,42 @@ export default async () => {
 
   let sent = 0, gone = 0, noCls = 0;
   for (const s of subs) {
-    const cls = clsOf(data, s);
-    if (!s.cls && !cls) noCls++;
+    // 본인이 앱·알림에서 고른 설정. '' 는 "전체" — 수합은 이 설정을 그대로 따릅니다.
+    const pick = String(s.cls || '').trim();
+    // 전담을 보여 줄 "내 반". 전체로 두었어도 이름으로 찾아 제목에 올립니다.
+    const own = pick || nameCls(data, s.who);
+    if (!own) noCls++;
 
     // 제목 — 잠금화면에서 열지 않고도 보이는 자리라 전담을 올립니다.
     let title = grade + '학년 수합 알림';
     const head = [];
     if (specDay) {
-      if (cls) {
-        const mineSpec = specFor(data, specDay, cls);
-        title = grade + '-' + cls + ' · ' +
+      if (own) {
+        const mineSpec = specFor(data, specDay, own);
+        title = grade + '-' + own + ' · ' +
           (mineSpec.length ? mineSpec.slice(0, 3).join(' · ') + (mineSpec.length > 3 ? ' 외 ' + (mineSpec.length - 3) : '')
                            : '전담 없음');
         if (mineSpec.length > 3) head.push('전담 ' + mineSpec.join(' · '));
       } else {
-        // 반을 아직 안 고른 분(부장·전담 등)에게는 네 반을 한 번에
         title = grade + '학년 · 오늘 전담';
-        classes.forEach((c) => {
+      }
+      // 전체로 두신 분(부장 등)에게는 네 반을 한 번에 — 내 반은 맨 위에
+      if (!pick) {
+        const order = own ? [own].concat(classes.filter((c) => c !== own)) : classes;
+        order.forEach((c) => {
           const o = specFor(data, specDay, c);
-          head.push(grade + '-' + c + ' ' + (o.length ? o.join(' · ') : '전담 없음'));
+          head.push((c === own ? '▸ ' : '') + grade + '-' + c + ' ' + (o.length ? o.join(' · ') : '전담 없음'));
         });
       }
     }
 
-    let body = head.concat(lines(cls, { soon, late, starToday, today, specDay })
+    let body = head.concat(lines(pick, { soon, late, starToday, today, specDay })
       .filter(Boolean)).join('\n');
     if (!body && !specDay) continue;                       // 그 선생님과 상관없는 날은 건너뜀
     if (!body) body = '마감이 가까운 수합은 없어요.';
 
-    // 앱 아이콘에 띄울 숫자 — 그 선생님 반이 아직 안 낸 수합 건수
-    const mine = (it) => !cls || missing(it).indexOf(String(cls)) >= 0;
+    // 앱 아이콘에 띄울 숫자 — 고른 설정 기준(전체면 네 반 전부)
+    const mine = (it) => !pick || missing(it).indexOf(String(pick)) >= 0;
     const count = soon.filter(mine).length + late.filter(mine).length;
     const payload = JSON.stringify({
       title, body, tag: 'g6-due-' + today, url: '/', count
